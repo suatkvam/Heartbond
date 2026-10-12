@@ -1,0 +1,47 @@
+Chainlink CRE changes the unit of design from a contract to a workflow. Start with the event that should trigger work, the off-chain information or service required, and the on-chain callback that completes the user promise. The Solidity contract is one verified action in that path, rather than the place where the entire application must live.
+
+The weather demo exposed a useful boundary: an EVM log triggered the workflow, CRE called an external weather API, then a protected callback wrote the result on-chain. This model lets a builder connect external systems without putting API calls, credentials, or an unverifiable single server inside a smart contract.
+
+CRE's important property is not merely that it can make HTTP requests. A decentralized oracle network reaches consensus over the external call and the workflow's off-chain computation before producing the chain write. That makes the integration layer a trust component with its own verification model, rather than a backend the product asks users to trust blindly.
+
+Use simulation as a product-development stage, not a lesser version of the workflow. It can prove the trigger, external request, and expected result without paying for an on-chain write; once the behavior is right, broadcast performs the real callback and makes the state visible to the application. For a hackathon, a simulation recording can be a credible demonstration while the deployment path remains unfinished.
+
+The forward-contract pattern separates a safe local simulation from production authority. The workflow can emit to a local forward in development, while deployment supplies the actual address and restricts the state-setting callback to the workflow output. That keeps the demo convenient without accidentally leaving the write path open.
+
+CRE is more valuable when the product's central promise crosses a system boundary. External data, scheduled operations, on-chain event response, and cross-system actions belong in one workflow when the user needs a result that neither the blockchain nor a conventional backend can establish alone.
+
+Daniela's GTM framework begins with an uncomfortable question: why would the ideal customer not use the product? The answer often reveals the real adoption obstacle, which should be neutralized in the headline and product promise rather than hidden behind a feature list.
+
+Positioning should acknowledge the strongest competitor instead of pretending it is weak. Identify why it wins, find the specific thing it fails to deliver for a defined user, and make that gap the basis for differentiation. A claim such as "regulated" only works if the intended users actually value regulation enough to change behavior.
+
+Partner discovery is a distribution design exercise. Specify what a partner contributes, the numerical pipeline or audience outcome expected, and the route into that relationship. A generic ecosystem partnership is not a go-to-market plan; a workshop or campaign that reaches a known group of builders can be.
+
+Business-development discovery should end with a warm-intro map, not a list of logos. Name the person, where they can be reached, what value can be offered before asking for anything, and what they can unlock. Combining that with ICP, competitor, and partner work creates a launch narrative grounded in actual routes to users.
+
+Product-market fit should be measured against the cost of the behavior being requested. If signing, payment, or a wallet connection is the hard step, the value proposition must justify it. The fast test is not a canvas: would a skeptical builder use the product themselves, and would an unprimed person say yes after seeing it without being told to be supportive?
+
+Pareen's definition of an active user is a completed core loop with an action and a reward, not a visit, registration, or wallet connection. For a DEX, buying an asset and receiving it is a meaningful loop; for a content product, a certain amount of consumption may be the threshold. The right activity interval follows the user's existing habit, whether daily, weekly, monthly, or less frequent.
+
+Retention targets must match the behavior being served. A DCA product can reasonably pursue a monthly user because salary and investment behavior are monthly; a product aimed at daily traders has to win a daily habit against the place they already trade. Calling every product a DAU product hides that difference and creates false failure signals.
+
+The first customer research should be unusually narrow and high quality. For a launchpad, speak to people who have actually launched meaningful tokens, ask what made their current platform insufficient, cross-check the answer with others, then build the one missing mechanic. Broad category cloning skips the evidence that could make a new product worth switching to.
+
+A solo builder without a network can create a reason for experts to respond by doing the research first. Study the category deeply enough to publish an analysis with a few non-obvious insights, then send that work with a precise request for a short conversation. "I am building a launchpad" is easy to ignore; evidence of serious understanding and a specific question is not.
+
+The first 500 repeat users are an operating problem, not a launch-video problem. Pareen's prescription is hands-on onboarding, a small user group, direct replies, and immediate iteration. The product earns referral only after early users have seen feedback turn into visible changes quickly enough to trust the founder's attention.
+
+Early retention improves when the product is reduced to the smallest repeatable action-reward loop. A feature-dense platform gives a founder more things to explain and users more ways to get lost. A small loop makes it possible to identify the trigger, action, reward, and changed state that should bring someone back.
+
+Once a product has early users, the cadence should reverse the default builder habit: spend most of the week speaking with users and iterating, reserve a constrained block for implementation, then return to users. More than 10 to 20 percent of time spent coding can be a warning that features are accumulating ahead of evidence.
+
+MIP-8 attacks a physical storage bottleneck rather than a Solidity syntax problem. Disk reads are far slower than computation, and Monad's fast execution makes that imbalance matter more. By fetching a 128-slot page for roughly the cost of fetching one slot, MIP-8 makes adjacent state materially cheaper to access.
+
+The practical storage rule shifts from "minimize every slot" to "optimize the hot path." Contracts benefit automatically when related standard slots already land together, but a contract with several mappings keyed by the same user can improve locality by storing those fields in one struct in one mapping. That is a simpler and often safer design than clever bit-level packing.
+
+MIP-8 does not make all state free. Writing a newly created slot still has a cost, and per-user or per-trade state should be judged differently from a globally accessed field. The important opportunity is to spend an extra nearby slot when it makes the recurring user path better, because the normal penalty for adjacent access has dropped sharply.
+
+The migration itself is a protocol-engineering lesson. Validators maintained both the existing and paged storage representations, caught the new representation up, and switched charging only after it was operating correctly. A storage-layout change that affects every validator was introduced without asking applications to migrate or rewrite their contracts.
+
+Developers do not need new opcodes, compilers, or special Solidity to receive MIP-8 benefits. For measurements, however, enable Monad gas pricing in Foundry so local tests reflect the network's economics. Consider hand-managed page layout or assembly only for a genuinely performance-critical design, such as a central limit order book, where the added complexity is justified.
+
+The product implication of cheaper adjacent storage is not "add state everywhere." It is to reconsider designs that were previously too costly: richer AMM market history and dynamic fee logic, more viable order-book contracts, and on-chain games with deeper state. The deciding question remains the same as the retention session: which specific user becomes happier because this state exists?

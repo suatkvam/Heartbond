@@ -1,0 +1,7 @@
+vyper==0.4.3
+titanoboa
+pytest
+web3
+httpx
+fastapi
+uvicorn

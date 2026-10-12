@@ -1,0 +1,31 @@
+Port: "This is not a usual hackathon." The useful implication is that a Metropolis entry should be judged against its path to continued use, not its demo-day theater. Start with a real user, a problem worth returning to, and a product reason to use Monad; technical novelty without that loop is not the target.
+
+Harpal: "Solidify the fundamentals first so that when you are prompting, your prompts are much better and the output is less error prone." This is not an argument for delaying a build until you are an expert. It is an argument that domain knowledge is the control surface for agents: it lets you set constraints, recognize a wrong abstraction, and correct the output before the error compounds.
+
+Port: "Do not try to re-invent the wheel. Check what is available on Monad right now and try to combine them in a way that can solve a problem." Sponsor research is therefore architectural reconnaissance, not prize hunting. Do it before committing to an idea, because existing infrastructure can remove an entire subsystem and reveal the distinct product layer that is actually worth building.
+
+Harpal: "To unlock asking mentors feature, you have to post some progress update." The platform makes status reporting an input to the mentoring loop: a small update, a blocked/on-track state, and a relevant link provide the history a mentor needs to give targeted help. Treat updates as debugging context and a deliberate route to sponsor expertise, not as administrative work.
+
+Port: "Copy these for your agent... just glance at them as a human... do not stop being human." The resource page is unusually valuable because it packages ecosystem tools and constraints as agent-ready context. The human still owns the decision: load the context into the agent, but first understand enough of it to approve the architecture rather than merely accepting a plausible implementation.
+
+Denham from Envio: "Think of it as the layer between your front end and your smart contracts." An indexer is justified when a product needs historical activity, aggregation, or a purpose-built query surface, rather than an isolated current-state lookup. It should be designed as product data modeling, not as a generic copy of chain history.
+
+Denham: "Often you use events to emit or logs to emit events. And that's kind of the better, more cost-effective way of getting data from on-chain." Build contracts with the future product view in mind: emit the events a user-facing feature will need, then index only the relevant events. Falling back to state reads for everything makes historical views slower, harder, and less intentional.
+
+Denham: "We've got three files we care about." The important split is config, schema, and handler. Config defines the data boundary through contract, network, start block, and selected events; schema defines the GraphQL surface; the handler turns an event into product-specific state. These are design choices, not generator output to leave unexplored.
+
+Denham: "Agentic development now is really, really nicely coupled with test-driven development." Agents can create handlers quickly, but tests prove the handler still represents the chain behavior after a refactor or a model-generated change. This is especially important for an indexer, where an apparently harmless interpretation error becomes an incorrect product view for every user.
+
+Uttam from Alchemy: "Agents can autonomously go and sign up for our services." Alchemy CLI is meaningful because it gives an agent a terminal-operable control plane for account-linked chain infrastructure, querying, and operational tasks, reducing browser-based setup. That makes it useful for the build loop, but it also means authentication deserves the same caution as any production credential.
+
+Uttam: "Use WebSockets, not HTTP, not just Node RPC." For a real-time Monad surface, choose sustained subscriptions rather than repeatedly polling snapshots. The transport is a product decision: a live wallet, event monitor, or market interface needs timely push updates; a static or occasional lookup does not need the same operational complexity.
+
+Uttam: "Please make sure that you're using API key and storing it in .env... protect the API key, please." Agent-first development does not weaken secret hygiene. Keep keys out of committed code and casual prompt text, inject them through environment or stronger secret management, and regard a CLI-authenticated session as privileged operational access.
+
+Port, on agent wallets: "No one's going out there and pasting private keys around anymore." The architectural takeaway is that a long-running agent needs a signing boundary with scoped funding and authentication, not a raw private key sitting in code, shell history, or a server. An agent wallet is the safer primitive when automation must take on-chain actions.
+
+Luan from Zerion: "We are not an RPC provider. We are not here to give you raw on-chain data." Zerion belongs one layer above raw access: it parses transactions, attaches prices, labels spam, and interprets token and DeFi positions. Use it when the product needs wallet behavior that users can understand, rather than when you only need a raw chain read.
+
+Luan: "Usually it's the parameters that people get wrong a lot." API filtering is product semantics, not request decoration. Decide explicitly whether a view is Monad-only, whether it includes simple assets or complex DeFi positions, and whether it hides trash. A transaction that appears missing may actually be excluded by an unexamined filter choice.
+
+Luan: "At least 90% or 99% of what you see here on the web app is going to be coming from public API." Zerion's wallet is a working reference for the public API, so it can be used to inspect feasible UI patterns, data interpretation, and spam handling before inventing a portfolio feature from scratch. Its wallet webhooks are the deeper primitive: subscribe to selected addresses and receive parsed live activity without building a raw-RPC polling system.

@@ -1,0 +1,209 @@
+Tracks & Bounties
+
+Choose one primary track, then add as many sponsor bounties as you'd like. Each bounty lists what it needs. You complete those fields when you submit.
+
+Create a project
+
+A project unlocks tracks and bounties, and the team holds it. A team of one is a team.
+Create a project
+Create project
+Create your team
+Primary tracks
+
+One defines the project's main judging category.
+
+    Onchain Finance & Trading
+
+    New asset primitives, market structures, and the trading experiences that make them usable — all made possible by fast, cheap settlement.
+
+    $30,000 USD
+    Consumer Products & Payments
+
+    Consumer-facing financial products that use onchain rails as a design advantage, for users who don't identify as crypto users.
+
+    $30,000 USD
+    Social, Attention & Culture
+
+    Products where open social graphs, competitive feed algorithms, and community governance let cultural participation translate into real ownership.
+
+    $30,000 USD
+    Trust, Identity & AI Infrastructure
+
+    Protocol-level primitives for trust, provenance, and user-owned data that make AI genuinely useful without any single platform capturing the value.
+
+    $30,000 USD
+
+Sponsor bounties
+
+Optional awards. Each one names its track, and the ones marked All tracks pair with any.
+
+    Best Community Team Project
+
+    Monad Foundation
+
+    Best project across all tracks built by a team from Metropolis community supporters.
+    All tracks
+
+    $5,000 USD
+    Best Cross-Border Payments App on Monad (Agora Payments Bounty)
+
+    Agora
+
+    Build a mobile app letting users send AUSD across borders using Mera passkey onboarding and instant settlement.
+    Consumer Products & Payments
+
+    $10,000 USD
+    Best Mobile Trading App on Monad (Agora Onchain Trading Bounty)
+
+    Agora
+
+    Build a mobile app authenticating via Mera, holding an AUSD balance, and executing trades through Perpl.
+    Onchain Finance & Trading
+
+    $10,000 USD
+    Best Use of Envio
+
+    Envio
+
+    Meaningfully use Envio's HyperIndex, HyperSync, or HyperRPC to power real on-chain data driving a core feature in your app.
+    All tracks
+
+    $1,000 USD
+    AI
+    Bring Any-Chain Liquidity to Monad
+
+    Aurora Intents
+
+    Integrate Aurora Intents (powered by NEAR Intents) into a Monad app for any-chain deposits, swaps, or deposit-and-execute flows.
+    All tracks
+
+    $5,000 USD
+    Best Integration of Cleanverse Verified Identity & Assets
+
+    Cleanverse
+
+    Build an app that gates CVA asset movement behind on-chain CVI identity verification.
+    Trust, Identity & AI Infrastructure
+
+    $2,000 USD
+    Build the Next Consumer Trading App on Kuru
+
+    Kuru
+
+    Build a focused spot trading product routing trades through Kuru's onchain order book on Monad.
+    Onchain Finance & Trading
+
+    $5,000 USD
+    Bring New Assets and Markets to Kuru
+
+    Kuru
+
+    Build a new class of tradable markets on Kuru's spot order book, including the infrastructure to make them viable.
+    Onchain Finance & Trading
+
+    $5,000 USD
+    Best Use of Dynamic
+
+    Dynamic
+
+    Integrate the Dynamic SDK for authentication, embedded/agent wallets, and/or signing into a deployed, demoable app.
+    All tracks
+
+    $5,000 USD
+    Best Projects using Alchemy
+
+    Alchemy
+
+    Build a functional project deployed on Monad that meaningfully integrates at least one Alchemy service or tool.
+    All tracks
+
+    $1,000 USD in Alchemy Credits
+    Best workflow with CRE
+
+    Chainlink
+
+    Build, simulate, or deploy a Chainlink Runtime Environment (CRE) Workflow used as an orchestration layer within your project.
+    All tracks
+
+    $3,000 USD
+    Best use of Perpl's API
+
+    Perpl
+
+    Build a production-ready trading bot or automation system on Perpl.
+    All tracks
+
+    $5,000 USD
+    Best Analytics / Risk Tool
+
+    Perpl
+
+    Build a real-time analytics, risk-monitoring, or portfolio intelligence dashboard focused on Perpl.
+    Onchain Finance & Trading
+
+    $3,000 USD
+    Privy!
+
+    Privy
+
+    Integrate Privy beyond authentication — login-only integrations will not qualify.
+    All tracks
+
+    $5,000 USD
+    Best use of Nansen
+
+    Nansen AI
+
+    Build a product experience powered by Nansen data/API/MCP/CLI that goes beyond exposing raw data.
+    All tracks
+
+    $5,000 USD total prize pool
+    Build with Hunyuan: Multimodal & Interactive Experiences
+
+    Kepler Plan by Tencent
+
+    Build a multimodal or interactive experience genuinely powered by Tencent's Hunyuan model.
+    Social, Attention & Culture
+
+    $2,000 in Tencent Cloud vouchers
+    Best Builds Powered by KIMI
+
+    Kimi
+
+    Build a project genuinely powered by KIMI (Moonshot AI) — open scope, no category restrictions.
+    All tracks
+
+    $3,000 in credits
+    Best Builds with Qwen 3.8 Max
+
+    Alibaba Cloud
+
+    Push Qwen 3.8 Max into genuinely agentic territory on Monad.
+    Trust, Identity & AI Infrastructure
+
+    $5,000 in credits
+    Best Mera-Powered UX on Monad
+
+    Monad Foundation
+
+    Build an app on Monad where Mera is the entire account layer — no seed phrase, no extension, no custody backend.
+    All tracks
+
+    $2,500 USD
+    Mera: One Passkey, Many Keys
+
+    Monad Foundation
+
+    Most creative non-wallet use of Mera's PRF-derived key material.
+    All tracks
+
+    $2,500 USD
+    ME
+    Best Agent Wallet Plugin
+
+    Metamask
+
+    Build a plugin that gives the MetaMask Agent Wallet a new trading superpower via its plugin architecture.
+    Onchain Finance & Trading
+
+    $2,500 USD

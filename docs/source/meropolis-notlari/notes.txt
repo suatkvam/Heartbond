@@ -1,0 +1,47 @@
+The six-week Metropolis format is a product-validation window, not extra build time. Use it to put an early version in front of a real person, observe where they get stuck, and test whether they would choose the product again. A successful transaction alone does not prove a payments product works.
+
+Nansen's value is not that it sees transfers; it attaches identity and behavioral context to them. The useful product question is not "what did this 0x address do?" but "was it a market maker, a fresh wallet, a whale, a public figure, or a related counterparty, and why should the user care?"
+
+Wallet counterparty data can support relationship analysis, but the raw graph is noisy. James's visualizer became useful only after it could remove exchanges and smart contracts, distinguish direct transfers from shared protocol interactions, and expose the remaining human-relevant links.
+
+Nansen's token flow data should be interpreted by tracked wallet segment, not reduced to "smart money." Inflows and outflows from fresh wallets, whales, public figures, and profitable traders can imply very different narratives, so a strong product exposes the segment rather than presenting an undifferentiated score.
+
+API, CLI, and MCP are three access paths to the same Nansen data, not three separate features. Use an API for application requests, a CLI when the agent needs the full query surface in its workspace, and MCP when the user should be able to ask natural-language questions against live on-chain context.
+
+The Nansen examples point away from another generic analytics dashboard. Wallet compatibility, an on-chain annual wrap, and visual transaction maps are useful because they turn difficult data into a social, explanatory, or shareable experience. The bounty requirement is that Nansen must be core to the product, not an optional data badge.
+
+Onboarding is a value-to-friction ratio at the point of maximum abandonment risk. Every action a new user takes should either unlock immediate value or make them feel that they have made progress; a sequence of unexplained security and setup prompts is technically correct but product-destructive.
+
+Design onboarding around the earliest "magic moment": the first action that proves the product's value. Remove or defer everything that does not get the user there. For a financial app, this might be a payment arriving instantly with no visible fee, not the moment the user finishes a form.
+
+Dynamic's headless SDK is strategically important because onboarding should match the application, not the wallet provider's default UI. Builders control when a wallet is created, when a confirmation is shown, and how each step fits the product's own value exchange.
+
+Dynamic CLI turns the dashboard into an agent-operable configuration surface. It can check and change settings programmatically after an authenticated approval, reducing the failure mode where the code is correct but a required dashboard toggle, chain setting, or wallet option was missed.
+
+Agent wallets need a permission model, not just another wallet. Use an autonomous wallet for an independent agent, a server wallet for backend automation, and delegated access when a user permits an agent to act from their wallet. Delegation should be policy-bound, time-bound, and revocable.
+
+The best answer to agent-wallet trust is often an adversarial layer rather than a blanket ban. Let a specialized execution agent propose an action, then pass the pending transaction to a review webhook or "personal CFO" agent that applies rules and can reject it before it lands. This mirrors the productive coding pattern of generation plus PR review.
+
+For AI-era DevEx, documentation must be optimized for a proxy reader. Dynamic's MCP fetches current documentation at low context cost, while the CLI exposes configuration. Together they let an agent implement and diagnose a stack without relying on stale model knowledge or manual dashboard navigation.
+
+Harpal's build sequence begins before coding: use plan mode and an adversarial questioning skill to pressure-test the idea, create a durable checklist in the repository, and preserve that plan so a new session or agent can continue after context runs out. Building is cheap; deciding what deserves to be built is the scarce work.
+
+Idea validation should start from recurring user complaints, not founder intuition. Search X, Reddit, niche communities, and Discord for the same unresolved question or frustration; then contact those people for interviews or beta access. The complaint is evidence of a reachable initial user group, not merely inspiration.
+
+Use each model's native information advantage. Harpal suggested Reddit's Ask AI to locate relevant communities, while Port pointed to Grok for current X discussion and Gemini for YouTube. The tool choice should follow where the evidence lives, rather than assuming a coding model is the best research surface.
+
+Give coding agents authoritative, task-specific context rather than hoping web search finds it. Monad's docs MCP routes the agent to current documentation, and the Metropolis resource page can be copied wholesale so the agent can discover sponsor tools, credits, skills, starter templates, and track-specific references.
+
+Design quality can be made agent-operable without becoming generic. Supply a concrete design system as markdown or screenshots from products with the desired interaction language, ask the agent to extract a reusable design file, then use component-level design mode to correct a precise element instead of issuing vague global styling requests.
+
+For consumer products, small sensory details can improve perceived completion and trust. The payment-success sound example matters because it reinforces an important state transition; use sound selectively for consequential interactions, not as decoration across the whole interface.
+
+Aurora Intents reframes a cross-chain request from a sequence of bridges and confirmations into a declared outcome. The user says what asset should end up where; the intent infrastructure handles routing and execution details that otherwise create error-prone wallet and chain switching.
+
+Choose Aurora's product by the terminal outcome. Intents Deposits is for funding an app account, Swap API is for a cross-chain asset conversion that remains part of your own UX, and Intents Connect is for a funded destination that must immediately execute a contract action such as entering a lending position or depositing into a vault.
+
+Intents Connect is valuable because it joins cross-chain movement with destination-chain composability in one operation. A user can bring an asset from an EVM or non-EVM source and end in a Monad protocol position, allowing a Monad product to reach users and assets that would otherwise be outside its native ecosystem.
+
+Persistent deposit addresses are a product primitive, not just an API detail. They let an app assign a stable place to fund a chosen destination account, which simplifies repeat top-ups and makes cross-chain funding feel more like a normal account operation.
+
+For an Aurora bounty, a cross-chain call alone is insufficient. The review criteria include real settlement and refund handling, clear UX, technical quality, source-chain support, contract compatibility for Intents Connect, and artifacts that make the project easy to verify: a public repository, technical demo, pitch video, and live link where possible.

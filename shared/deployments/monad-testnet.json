@@ -1,0 +1,10 @@
+{
+  "chainId": 10143,
+  "address": null,
+  "deployBlock": null,
+  "reporters": [],
+  "reportGrace": 30,
+  "challengeWindow": 60,
+  "deployedAt": null,
+  "commit": null
+}

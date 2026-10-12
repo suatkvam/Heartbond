@@ -1,0 +1,45 @@
+Kuru is infrastructure, not the finished trading product. It supplies fully on-chain order books, liquidity, market data, trigger orders, relay-backed transaction delivery, and fee mechanics; the Metropolis builder should own the user insight, distribution, and interface that gives someone a reason to use a new trading experience.
+
+The clearest Kuru differentiation is a product built for an underserved audience rather than the same global crypto user. A region-specific compliant front end, local on-ramping, structured financial packaging, or an agentic assistant can access users that a generic terminal cannot reach, while making marketing and distribution less interchangeable with every other trading app.
+
+Treat Kuru's historical data API and exchange streams as different layers of a trading interface. Historical data initializes the product with orders, trades, balances, and market context; low-latency streams support live books, mids, user balances, and trading automation. A front end that confuses them will either be slow or unnecessarily expensive.
+
+For active trading, users trust the interface only when it behaves continuously. Live charts need low-latency reliable data, executions need clear confirmation, and mobile performance matters because excess state and payload size create jitter. An interface that looks uncertain about whether an order landed makes users feel unsafe even when the contracts are correct.
+
+Kuru's relay is a product primitive, not merely an API detail. It sponsors gas and retries execution so an app can avoid asking a new user to fund an EOA with MON before taking a trading action. The most valuable use is to make a constrained, intentional flow feel synchronous and dependable.
+
+Kuru subaccounts and delegated signer permissions enable a better portfolio-management architecture than sharing a private key. A user can authorize a manager or strategy to trade while separately restricting withdrawal capability, amount, or scope; the product becomes a controllable financial mandate rather than blind custody.
+
+The portfolio-manager demo combined a passkey-based Mera wallet with an EIP-7702-compatible delegated contract and relayer. That pattern separates the valuable owner account from a disposable trading credential, applies daily limits in contract logic, and permits gas-sponsored execution without placing broad withdrawal authority on a local device.
+
+Kuru's new-markets bounty is not mainly about listing another token. The deeper opportunity is a wrapper that creates a useful new spot market or outcome market, explains why that market has an audience, and has a credible path to liquidity. Prediction markets are one example because binary or multi-outcome shares can be represented on top of spot order-book infrastructure.
+
+The first traders for a new market should come from the founder's specific insight, not broad promotion. Start with people already trading the relevant asset, sport, region, or strategy; interview them about what they cannot trade today; then test whether they will use the product before treating liquidity as a generic acquisition problem.
+
+QuickNode's monitoring rule is simple: instrument the chain event whose absence would make users angry immediately. A wallet needs incoming and outgoing transaction activity, a DEX needs decoded swaps and confirmations, and an analytics dashboard can tolerate a delay if it is not serving a real-time trading decision.
+
+Webhooks are the lowest-complexity push mechanism when a product needs current events from a contract or wallet. Configure the watched address and event hash, point the delivery at an endpoint, and make the application verify the received security metadata. This replaces a custom client-side subscription loop for many MVP notification and activity-feed needs.
+
+Streams is the right escalation when a product needs an ETL pipeline rather than a notification. It can backfill from a chosen block, continue with live blocks, filter and transform raw receipts in JavaScript or Go, batch messages, and deliver the shaped data directly to a database, data lake, or endpoint.
+
+Streams also exposes operational choices that should be intentional: a latest-block delay trades speed for confidence, retry and timeout behavior protect against destination outages, and a bounded range prevents accidentally indexing an entire chain. These controls define the product's data contract, not just its infrastructure bill.
+
+MetaMask Agent Wallet plugins turn a general agent wallet into a capability platform. A plugin can add deterministic trading rules, ENS resolution, a new perpetuals venue, or copy-trading logic, then be published as an npm package for other agents to install rather than rebuilt in every project.
+
+The plugin security model has a hard boundary: plugins can read wallet state, use the public client, obtain market data, and submit transaction requests, but cannot modify or bypass agent-wallet policies. Execution still runs through MetaMask's policy engine and MFA path, so a useful plugin extends functionality without owning the user's risk controls.
+
+Permissions are declared in the plugin manifest and presented during installation. This creates a reviewable contract between the plugin and the user: a read-only plugin should not silently gain transaction ability in a later version, and a user can reject an installation that asks for capabilities beyond the intended use.
+
+Build an agent-wallet plugin from a real trading or execution primitive, not a vague instruction. First understand the venue, strategy, data source, or contract flow yourself; then use the plugin skill and planning mode to express precise inputs, error paths, permissions, and policy assumptions to the agent.
+
+The agent workflow described in the stream is deliberately staged: research with diagrams, define the intended product, iterate on a PRD, implement in a fresh context, test in another fresh context, then perform human QA. Context hygiene is not cosmetic; separating research, product decisions, implementation, and testing keeps the agent from losing the architectural thread.
+
+Launchpads are powerful because they can create a community of communities. A normal app grows one user community; a launchpad enables many creators to form distinct token communities under the platform's umbrella, turning distribution into the product's central compounding mechanism.
+
+A new launchpad needs to enable a new kind of community, not merely move the same meme-coin mechanic to Monad. PumpFun makes simple viral coin communities; Pawns changes the community thesis by pairing coins with stocks and redirecting a portion of fees. The useful question is what community could exist only because of this launch process and revenue design.
+
+Fee allocation is a core design lever. The incumbent's margin is potential product surface: instead of routing all fees to a platform buyback, a launchpad can direct them toward an asset, a participant group, a public good, or another programmatic destination that gives its communities a distinct reason to form and persist.
+
+Trust in a launchpad is partly mechanical and partly narrative. Clear, identifiable launch traits can give users origin confidence, while a founder who publicly explains where fees go and why the platform is designed that way gives users a coherent reason to believe the product will act consistently.
+
+The right first step for a launchpad is observation, not code generation. Use competing launchpads, inspect the user discourse and recurring complaints, decide which new community or incentive model solves a real gap, and only then build. A generic launchpad with no thesis is unlikely to overcome existing network effects.

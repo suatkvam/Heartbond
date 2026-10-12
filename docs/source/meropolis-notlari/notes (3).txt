@@ -1,0 +1,37 @@
+Cleanverse's core claim is architectural: verified identity and compliant assets are two halves of one transfer decision. A wallet-bound credential supplies attributes such as tier, group, country, validity, and status; the asset transfer enforces the applicable rule before settlement. Identity without a transfer gate leaves money movable, while an asset rule without identity cannot determine who is participating.
+
+The compliance check belongs on the path where value moves. A CVA token can run it inside its transfer hook, while a business contract should call `complianceVerify` for the relevant parties before changing balances or state in a deposit, swap, withdrawal, or settlement. A frontend check and onboarding approval are useful UX, but neither is enforcement.
+
+Onboarding-only verification is structurally insufficient because counterparties and credentials change after signup. A receiving wallet may never have been verified, an existing credential may expire or become inactive, and a user's tier or country eligibility may change. Rechecking at transfer time makes the current rule, rather than a historical signup event, authoritative.
+
+A rejected compliant transfer should be a legible product state, not a generic failure. Surface the reason that maps to the on-chain rejection, such as no credential, expiry, inactive status, insufficient tier, or disallowed country, then direct the affected user to the right onboarding or remediation step. Hiding the reason turns compliance into unexplained friction.
+
+The useful test for a Cleanverse bounty project is deletion. If removing the identity logic still allows the asset to move, compliance was bolted on as an optional layer. A strong design has no alternate code path around the contract-level rule and pairs that invariant with a real regulated flow such as travel-rule payments, permissioned DeFi, or RWA settlement.
+
+Start a Cleanverse MVP with the smallest complete failure-and-success pair. Store the validator address, register the contract through the API, set a minimal Rule V2 such as a minimum tier, and create one gated action. Test two wallets: one that meets the rule and one that does not. That demonstrates both the product promise and the contract invariant before expanding to factories, issued assets, or wrappers.
+
+Agora's stablecoin opportunity is not merely using AUSD as another balance. A 1:1 USD rail on Monad can support products that price, hold, settle, and quote in dollars while benefiting from low fees. Payments, high-frequency transfers, and trading pairs become product design surfaces when the base asset has predictable value and inexpensive movement.
+
+For an Agora product, on-ramping is the first user journey, not a follow-up integration. A user may arrive with fiat, USDC, another stablecoin, or no wallet knowledge at all. The product has not solved payments simply because a contract works; it must make obtaining, funding, and trusting the balance feel understandable to someone coming from Web2.
+
+The instant settlement contract is the primary AUSD conversion primitive for the hackathon. Builders should understand its approvals and the in-and-out flow before designing a payment or trading interface. On testnet, the paired token is CTK rather than USDC, so a polished demo may need to conceal that test-only detail without obscuring what the user is actually doing.
+
+Instant settlement also creates an operational edge case: liquidity can be unavailable. Agora's route API is a meaningful fallback rather than an afterthought, providing an address or vault route that can accept USDC or potentially fiat and return minted AUSD with an operational delay. The UI should distinguish instant completion from this slower route instead of letting users infer that a delayed transaction disappeared.
+
+Pending, reverted, and reversed actions are trust-critical states. Show that a transaction is processing, make the on-chain activity inspectable, explain what failed in concise language, and explicitly reassure users when funds are safe and returning. A product that only has a happy-path screen leaves users to interpret financial ambiguity as loss.
+
+The Agora session also described a practical agent workflow: begin with a product requirement document that establishes why the product exists and how success or failure will be judged; follow with a technical design that chooses the concrete integrations; then implement. Use agents to research competing APIs and challenge assumptions, but keep a coherent workspace and human-owned decisions across the work.
+
+For on-chain products, define failure conditions and security success criteria before implementation. That makes it possible to build a test suite that evaluates the right behavior and to review generated smart-contract code against explicit expectations. Reading the contract remains necessary when real funds or production behavior are at stake.
+
+Tenderly's simulator is useful because it turns an opaque revert into an inspectable execution. A builder can impersonate an address, apply state overrides, invoke a real contract function, and see the resulting trace. The debugger then connects a failed transaction to the exact source line, storage value, and require condition that produced it.
+
+State overrides change the debugging question from "why is this impossible?" to "what condition would make this succeed?" In the wrapped-MON example, the builder could see that the requested withdrawal exceeded the balance, test the corrected amount, or override the balance to explore a different scenario. That isolates the real condition before any testnet iteration.
+
+Editing source code in the simulation can accelerate hypothesis testing, but it is a diagnostic tool rather than a reason to weaken production checks. Temporarily removing a require statement demonstrates that the check caused the revert; it does not establish that the check should be removed. The next step is to decide whether the precondition, user flow, or contract logic is wrong.
+
+Virtual environments extend one-off simulation into a persistent forked Monad sandbox. Builders can choose a block, use a faucet, make lasting state changes, mine or revert blocks, move time, and interact through a virtual RPC. This makes it possible to rehearse multi-step flows and reproduce chain context without touching the live network.
+
+Tenderly alerts connect observability to action. A contract event or monitored state can send a notification to a chosen destination, or trigger serverless code through Vectory. That creates a direct path from detected deposits, balance thresholds, or incidents to a response workflow instead of relying on someone to notice a dashboard manually.
+
+The Day 5 sessions fit together as an application reliability stack. Cleanverse defines who may move an asset and where that rule is enforced; Agora makes the money movement usable and explainable to a mainstream user; Tenderly gives the team a way to test, inspect, and automate the paths that must remain correct.

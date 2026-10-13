@@ -31,9 +31,8 @@ ul.err { padding-left: 20px; margin: 8px 0; }
 /* ---- shell */
 .app { max-width: 1240px; margin: 0 auto; padding: 0 32px 40px; }
 header { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: center; height: auto; min-height: 64px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-.brand { font-weight: 600; font-size: 16px; text-decoration: none; display: flex; align-items: center; gap: 8px; }
-.brand .tagline { color: var(--muted); font-weight: 400; font-size: 14px; }
-.brand::before { content: ''; width: 10px; height: 10px; border-radius: 3px; background: var(--accent); }
+.brand { position: relative; display: block; flex: 0 0 255px; width: 255px; height: 48px; overflow: hidden; text-decoration: none; }
+.brand img { position: absolute; top: 50%; left: 50%; width: 300px; max-width: none; transform: translate(-50%, -50%); }
 nav { display: flex; gap: 24px; flex: 1; }
 nav a { color: var(--muted); text-decoration: none; font-size: 14px; padding: 4px 0; }
 nav a:hover, nav a.active { color: var(--text); }

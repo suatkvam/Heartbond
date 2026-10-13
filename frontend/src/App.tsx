@@ -66,7 +66,9 @@ export function App() {
   return (
     <div className="app">
       <header>
-        <a className="brand" href="#/">Heartbond <span className="tagline">pay per heartbeat</span></a>
+        <a className="brand" href="#/" aria-label="Heartbond — pay per heartbeat">
+          <img src="/logo.png" alt="Heartbond — pay per heartbeat" />
+        </a>
         <nav>
           <a href="#/" className={!route || route === 'rental' ? 'active' : ''}>Rentals</a>
           <a href="#/create" className={route === 'create' ? 'active' : ''}>Create rental</a>

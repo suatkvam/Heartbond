@@ -265,12 +265,13 @@ export function useTx() {
 export type Ev = { name: string; args: Record<string, unknown>; block: bigint; tx: Hex; logIndex: number; time?: number }
 const POLL_MS = 8000 // how often new blocks are checked once the history is loaded
 const MAX_BACK_CHUNKS = 150 // one backward pass = 15,000 blocks; the "scan older" button grants another
+const BACK_SCAN_CONCURRENCY = 4 // keep historical RPC reads moving without flooding the public endpoint
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 type Cursor = { lo: bigint; hi: bigint; complete: boolean; budget: number }
 
 /**
  * Events of one rental. History is scanned ONCE, backwards from the head in 100-block chunks
- * (the public RPC's eth_getLogs limit) until the rental's RentalCreated or the deploy block;
+ * (the public RPC's eth_getLogs limit), four chunks at a time, until the rental's RentalCreated or the deploy block;
  * after that each poll only reads the blocks added since the last scanned block.
  * RPC errors / 429 back off exponentially and surface as one quiet `retrying` flag.
  * Withdrawn has no rental id, so withdrawals of the two parties are shown.
@@ -374,12 +375,18 @@ export function useEvents(id: bigint, parties: Address[]) {
         if (!c.complete && c.budget > 0 && !dead) setState((s) => ({ ...s, scanning: true }))
         while (!dead && !c.complete && c.budget > 0) {
           if (c.lo <= DEPLOY_BLOCK) { c.complete = true; break }
-          const to = c.lo - 1n
-          const from = to - LOG_CHUNK + 1n > DEPLOY_BLOCK ? to - LOG_CHUNK + 1n : DEPLOY_BLOCK
-          const found = await fetchRange(from, to)
+          const ranges: [bigint, bigint][] = []
+          let to = c.lo - 1n
+          while (ranges.length < BACK_SCAN_CONCURRENCY && ranges.length < c.budget && to >= DEPLOY_BLOCK) {
+            const from = to - LOG_CHUNK + 1n > DEPLOY_BLOCK ? to - LOG_CHUNK + 1n : DEPLOY_BLOCK
+            ranges.push([from, to])
+            to = from - 1n
+          }
+          const batches = await Promise.all(ranges.map(([from, to]) => fetchRange(from, to)))
+          const found = batches.flat()
           merge(found)
-          c.lo = from
-          c.budget--
+          c.lo = ranges[ranges.length - 1][0]
+          c.budget -= ranges.length
           if (found.some((e) => e.name === 'RentalCreated' && e.args.rental_id === id)) c.complete = true
           await sleep(150) // stay far below the public RPC rate limit
         }

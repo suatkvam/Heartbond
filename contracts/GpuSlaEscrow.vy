@@ -18,8 +18,8 @@ MAX_REPORTERS: constant(uint256) = 8        # SPEC R-1
 MAX_START_DELAY: constant(uint256) = 2592000  # seconds (30 days), SPEC C-1.11
 MAX_INTERVAL: constant(uint256) = 86400     # seconds (1 day), SPEC C-1.12
 
-REPORT_GRACE: public(constant(uint256)) = 30       # seconds, SPEC T-2 (demo value)
-CHALLENGE_WINDOW: public(constant(uint256)) = 60   # seconds, SPEC T-4 (demo value)
+REPORT_GRACE: public(constant(uint256)) = 10       # seconds, temporary video demo value
+CHALLENGE_WINDOW: public(constant(uint256)) = 15   # seconds, temporary video demo value
 
 # Rental status (plain uint8 so the UI never has to decode Vyper flags)
 STATUS_NONE: constant(uint8) = 0

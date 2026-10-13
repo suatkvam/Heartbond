@@ -5,8 +5,8 @@ import { formatEther, isAddress, parseEther, type Address, type Hex } from 'viem
 export const MAX_SLOTS = 256
 export const MAX_INTERVAL = 86_400
 export const MAX_START_DELAY = 2_592_000
-export const REPORT_GRACE = 30
-export const CHALLENGE_WINDOW = 60
+export const REPORT_GRACE = 10
+export const CHALLENGE_WINDOW = 15
 /** Monad reserve balance: a value spend that leaves less than this reverts. */
 export const RESERVE_WEI = 10n * 10n ** 18n
 /** A shared start must be at least this far ahead, or the creation tx cannot land before it (C-1.1). */

@@ -31,7 +31,7 @@ contracts:
             - hash
 chains:
   - id: 10143
-    start_block: 70661775
+    start_block: 70770602
     rpc:
       - url: "https://testnet-rpc.monad.xyz"
         for: sync
@@ -39,4 +39,4 @@ chains:
         interval_ceiling: 100
     contracts:
       - name: GpuSlaEscrow
-        address: "0x18C5f3F33262F9470Eb6ca4856deaaBAD4E0e59C"
+        address: "0x6E7Fcc5d0cbD7F9758693802B809Ae7e0530DeE7"

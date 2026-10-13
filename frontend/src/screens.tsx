@@ -27,7 +27,7 @@ export function ListScreen() {
     <section className="card">
       <div className="head"><h2>Rentals</h2><a className="button" href="#/create">Create rental</a></div>
       {isLoading && <div className="stack"><Skeleton h={44} /><Skeleton h={44} /><Skeleton h={44} /></div>}
-      {error && <p className="err">Read error: {error.message.split('\n')[0]}</p>}
+      {error && !data && <p className="muted">RPC busy, retrying…</p>}
       {data && data.rows.length === 0 && (
         <div className="emptystate">
           <div className="slots sm">{[0, 0, 0, 0].map((_, i) => <span key={i} className="slot s0" />)}</div>
@@ -178,7 +178,8 @@ export function DetailScreen({ id }: { id: bigint }) {
         <div className="cols"><div className="stack"><Skeleton h={300} /><Skeleton h={120} /></div><Skeleton h={420} /></div>
       </div>
     )
-  if (error) return <section className="card"><p className="err">Read error: {error.message.split('\n')[0]}</p></section>
+  // a failed refresh keeps the last good data on screen; only a first load with no data is an error
+  if (error && !data) return <section className="card"><p className="muted">RPC busy, retrying… <span className="mono small">{error.message.split('\n')[0]}</span></p></section>
   if (!data || notFound)
     return (
       <section className="card emptystate">

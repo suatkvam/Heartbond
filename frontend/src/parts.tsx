@@ -107,16 +107,17 @@ function describe(e: Ev): string {
 const evClass = (e: Ev) => (e.name === 'UptimeReported' ? (e.args.up ? 'up' : 'down') : e.name === 'RentalCreated' ? '' : 'accent')
 
 /** Terminal-like live list of the rental's on-chain events, newest at the bottom. */
-export function ActivityFeed({ events, scanning, complete, lowest, error, scanOlder, mock }: ReturnType<typeof useEvents> & { mock: boolean }) {
+export function ActivityFeed({ events, scanning, retrying, complete, lowest, scanOlder, mock }: ReturnType<typeof useEvents> & { mock: boolean }) {
   return (
     <aside className="card feed">
       <div className="feedhead">
         <h3>On-chain activity</h3>
-        <span className={`live ${scanning ? 'on' : ''}`}>{mock ? 'mock' : scanning ? 'syncing' : 'live'}</span>
+        <span className={`live ${scanning || retrying ? 'on' : ''}`}>{mock ? 'mock' : retrying ? 'RPC busy, retrying' : scanning ? 'syncing' : 'live'}</span>
       </div>
       <div className="term" aria-live="polite">
         {events.length === 0 && !mock && scanning && (<><Skeleton h={14} w="85%" /><Skeleton h={14} w="70%" /><Skeleton h={14} w="78%" /></>)}
-        {events.length === 0 && !mock && !scanning && <p className="empty">No events found for this rental yet.</p>}
+        {events.length === 0 && !mock && !scanning && !retrying && <p className="empty">No events found for this rental yet.</p>}
+        {events.length === 0 && !mock && !scanning && retrying && <p className="empty">Waiting for the RPC…</p>}
         {mock && <p className="empty">No chain in mock mode. After a deploy, every report, settle, objection, finalize and withdraw appears here as it lands.</p>}
         {events.map((e) => (
           <a key={`${e.tx}-${e.logIndex}`} className={`line ${evClass(e)}`} href={txUrl(e.tx)} target="_blank" rel="noreferrer">
@@ -127,8 +128,7 @@ export function ActivityFeed({ events, scanning, complete, lowest, error, scanOl
           </a>
         ))}
       </div>
-      {error && <p className="err small">Log read error: {error}</p>}
-      {!mock && !complete && !scanning && lowest !== undefined && (
+      {!mock && !complete && !scanning && !retrying && lowest !== undefined && (
         <p className="muted small">Scanned from block <span className="mono">{lowest.toString()}</span>. <button className="link" onClick={scanOlder}>Scan older blocks</button></p>
       )}
     </aside>

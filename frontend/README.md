@@ -1,4 +1,7 @@
-# frontend/ — GPU SLA Escrow web UI
+# frontend/ — Heartbond web UI
+
+_Heartbond — pay per heartbeat._ (Formerly the working title "GPU SLA Escrow"; the contract and
+ABI keep the name `GpuSlaEscrow`.)
 
 React + Vite + TypeScript, viem + wagmi, plain CSS. Monad Testnet (chain id 10143).
 The interface contract for this UI is `../docs/UI_HANDOFF.md`; changes are logged in
@@ -63,12 +66,15 @@ rebuild (or restart `npm run dev`) and the app leaves mock mode.
   rental is the latest block timestamp plus the delay in the form (default 20 s).
 - **Gas**: every transaction is simulated first, then sent with an explicit gas limit of
   estimate × 1.2 (Monad charges the gas limit).
-- **Polling**: the open rental is read every 2 s, the list every 8 s, the block time every 4 s.
+- **Polling**: the open rental is read every 4 s, the list every 8 s, the block time every 4 s.
   The public RPC is rate-limited, so rentals that are not on screen are not queried.
-- **Event history** scans logs backwards from the head in 1000-block chunks until the rental's
-  `RentalCreated` event (60 chunks per run, then a "scan older blocks" button), and follows new
-  blocks forwards. `Withdrawn` carries no rental id, so withdrawals of the renter and the
-  provider are listed. For rentals older than a few hours an indexer would be the better tool.
+- **Event history** is scanned once: backwards from the head in 100-block `eth_getLogs` chunks
+  (the public RPC's limit) until the rental's `RentalCreated` event — 150 chunks per pass, then a
+  "scan older blocks" button. After that only blocks added since the last scanned block are read,
+  every 8 s. On RPC errors or 429 the scan backs off (2 s, 4 s, 8 s … 60 s) and the feed shows one
+  quiet "RPC busy, retrying" indicator. `Withdrawn` carries no rental id, so withdrawals of the
+  renter and the provider are listed. For rentals older than about an hour an indexer would be
+  the better tool.
 - **Oracle panel** appears only when `VITE_ORACLE_API` answers `/health`. The API listens on
   `127.0.0.1` only and allows only `http://localhost:*` origins, so the panel shows up when the
   UI is served from the machine that runs the oracle, and stays hidden on a hosted build. The

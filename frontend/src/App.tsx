@@ -57,10 +57,16 @@ export function App() {
   else if (route === 'withdraw') screen = <WithdrawScreen />
   else if (route === 'rental' && /^\d+$/.test(param ?? '')) screen = <DetailScreen id={BigInt(param)} />
 
+  // browser tab: page title · product name
+  const page = route === 'create' ? 'Create rental' : route === 'withdraw' ? 'Withdraw' : route === 'rental' && param ? `Rental #${param}` : 'Rentals'
+  useEffect(() => {
+    document.title = `${page} · Heartbond`
+  }, [page])
+
   return (
     <div className="app">
       <header>
-        <a className="brand" href="#/">GPU SLA Escrow</a>
+        <a className="brand" href="#/">Heartbond <span className="tagline">pay per heartbeat</span></a>
         <nav>
           <a href="#/" className={!route || route === 'rental' ? 'active' : ''}>Rentals</a>
           <a href="#/create" className={route === 'create' ? 'active' : ''}>Create rental</a>

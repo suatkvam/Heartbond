@@ -186,6 +186,19 @@ export function validateCreate(f: CreateForm, self?: Address, fixed?: { start?: 
   return { errors, args: { provider: p as Address, threshold: threshold!, interval: interval!, slots: slots!, delay: fixed ? undefined : delay!, start: fixed?.start, value: value! } }
 }
 
+/** Monad's public RPC rejects eth_getLogs over more than 100 blocks. */
+export const LOG_CHUNK = 100n
+
+/** Inclusive [from, to] block ranges of at most `size` blocks covering from..to, in ascending order. */
+export function chunkRanges(from: bigint, to: bigint, size: bigint = LOG_CHUNK): [bigint, bigint][] {
+  const out: [bigint, bigint][] = []
+  for (let lo = from; lo <= to; lo += size) out.push([lo, lo + size - 1n < to ? lo + size - 1n : to])
+  return out
+}
+
+/** Wait before retry n (1-based) after RPC errors / 429: 2 s, 4 s, 8 s … capped at 60 s. */
+export const backoffMs = (failures: number) => Math.min(60_000, 1000 * 2 ** Math.max(1, failures))
+
 // Contract revert string -> message shown to the user (UI_HANDOFF §4, in English).
 const REVERTS: Record<string, string> = {
   'start in past': 'The start time has passed — try again',

@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { parseEventLogs, type Address, type Hex, type TransactionReceipt } from 'viem'
 import { usePublicClient, useWalletClient } from 'wagmi'
 import { ABI, ADDRESS, DEPLOY_BLOCK, MOCK, ORACLE_API, monad } from './config'
-import { CHALLENGE_WINDOW, REPORT_GRACE, computePhase, revertMessage, sameAddr, type Rental } from './lib/logic'
+import { CHALLENGE_WINDOW, LOG_CHUNK, REPORT_GRACE, backoffMs, chunkRanges, computePhase, revertMessage, sameAddr, type Rental } from './lib/logic'
 
 // ---------------------------------------------------------------- mock (UI_HANDOFF §9)
 const MOCK_RENTAL: Rental = {
@@ -55,14 +55,14 @@ export function useChainNow(): number {
 // ---------------------------------------------------------------- reads
 export type RentalView = { rental: Rental; slots: number[]; phase: number; preview: { compliant: boolean; payee: Address; amount: bigint } }
 
-/** rentals + get_slots + phase + payout_preview for one id, refreshed every 2 s (UI_HANDOFF §5). */
+/** rentals + get_slots + phase + payout_preview for one id, refreshed every 4 s (the public RPC is rate-limited). */
 export function useRental(id: bigint) {
   const pc = usePublicClient()
   const now = useChainNow()
   const q = useQuery({
     queryKey: ['rental', id.toString()],
     enabled: !MOCK && !!pc && id > 0n,
-    refetchInterval: 2000,
+    refetchInterval: 4000,
     queryFn: async (): Promise<RentalView> => {
       const [rental, slots, phase, preview] = await Promise.all([
         read(pc!, 'rentals', [id]) as Promise<Rental>,
@@ -183,34 +183,39 @@ export function useTx() {
 
 // ---------------------------------------------------------------- event history
 export type Ev = { name: string; args: Record<string, unknown>; block: bigint; tx: Hex; logIndex: number; time?: number }
-const CHUNK = 1000n // blocks per getLogs call
-const MAX_BACK_CHUNKS = 60 // per run; the "scan older" button continues
+const POLL_MS = 8000 // how often new blocks are checked once the history is loaded
+const MAX_BACK_CHUNKS = 150 // one backward pass = 15,000 blocks; the "scan older" button grants another
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+type Cursor = { lo: bigint; hi: bigint; complete: boolean; budget: number }
 
 /**
- * Events of one rental. Scans backwards from the head in 1000-block chunks until the
- * rental's RentalCreated is found (or the deploy block), then follows the head forwards.
+ * Events of one rental. History is scanned ONCE, backwards from the head in 100-block chunks
+ * (the public RPC's eth_getLogs limit) until the rental's RentalCreated or the deploy block;
+ * after that each poll only reads the blocks added since the last scanned block.
+ * RPC errors / 429 back off exponentially and surface as one quiet `retrying` flag.
  * Withdrawn has no rental id, so withdrawals of the two parties are shown.
- * ponytail: linear getLogs scan, one call per 1000 blocks (~5 min of chain time each);
- * switch to an indexer (e.g. Envio) if rentals older than a few hours must be browsed.
+ * ponytail: linear getLogs scan (100 blocks ~ 30 s of chain time per call); switch to an
+ * indexer (e.g. Envio) if rentals older than about an hour must be browsed.
  */
 export function useEvents(id: bigint, parties: Address[]) {
   const pc = usePublicClient()
   const [events, setEvents] = useState<Ev[]>([])
-  const [state, setState] = useState<{ scanning: boolean; complete: boolean; lowest?: bigint; error?: string }>({ scanning: false, complete: false })
+  const [state, setState] = useState<{ scanning: boolean; retrying: boolean; complete: boolean; lowest?: bigint }>({ scanning: false, retrying: false, complete: false })
   const [more, setMore] = useState(0)
-  const cursor = useRef<{ lo: bigint; hi: bigint; complete: boolean } | null>(null)
+  const cursor = useRef<Cursor | null>(null)
   const partyKey = parties.map((p) => p.toLowerCase()).join(',')
 
   useEffect(() => {
     cursor.current = null
     setEvents([])
-    setState({ scanning: false, complete: false })
+    setState({ scanning: false, retrying: false, complete: false })
   }, [id])
 
   useEffect(() => {
-    if (MOCK || !pc || id <= 0n) return
+    if (MOCK || !pc || id <= 0n || parties.length === 0) return
     let dead = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let failures = 0
 
     const fetchRange = async (from: bigint, to: bigint): Promise<Ev[]> => {
       const logs = await pc.getLogs({ address: ADDRESS!, fromBlock: from, toBlock: to })
@@ -229,42 +234,50 @@ export function useEvents(id: bigint, parties: Address[]) {
         return [...old, ...found.filter((e) => !seen.has(`${e.tx}-${e.logIndex}`))].sort((a, b) => (a.block === b.block ? a.logIndex - b.logIndex : a.block < b.block ? -1 : 1))
       })
 
-    const run = async () => {
+    const step = async () => {
       try {
-        setState((s) => ({ ...s, scanning: true, error: undefined }))
         const head = await pc.getBlockNumber()
-        if (!cursor.current) cursor.current = { lo: head + 1n, hi: head, complete: false }
+        if (!cursor.current) cursor.current = { lo: head + 1n, hi: head, complete: false, budget: MAX_BACK_CHUNKS }
         const c = cursor.current
-        // forwards: new blocks since the last run
-        while (!dead && c.hi < head) {
-          const to = c.hi + CHUNK < head ? c.hi + CHUNK : head
-          merge(await fetchRange(c.hi + 1n, to))
-          c.hi = to
+        // forwards: only the blocks added since the last scanned block
+        for (const [from, to] of chunkRanges(c.hi + 1n, head)) {
+          if (dead) return
+          merge(await fetchRange(from, to))
+          c.hi = to // advance per chunk, so a later failure never re-reads this range
         }
-        // backwards: until this rental's creation or the deploy block
-        for (let n = 0; !dead && !c.complete && n < MAX_BACK_CHUNKS; n++) {
+        // backwards: the one-time history pass, until this rental's creation or the deploy block
+        if (!c.complete && c.budget > 0 && !dead) setState((s) => ({ ...s, scanning: true }))
+        while (!dead && !c.complete && c.budget > 0) {
           if (c.lo <= DEPLOY_BLOCK) { c.complete = true; break }
           const to = c.lo - 1n
-          const from = to - CHUNK + 1n > DEPLOY_BLOCK ? to - CHUNK + 1n : DEPLOY_BLOCK
+          const from = to - LOG_CHUNK + 1n > DEPLOY_BLOCK ? to - LOG_CHUNK + 1n : DEPLOY_BLOCK
           const found = await fetchRange(from, to)
           merge(found)
           c.lo = from
+          c.budget--
           if (found.some((e) => e.name === 'RentalCreated' && e.args.rental_id === id)) c.complete = true
-          await sleep(120) // stay far below the public RPC rate limit
+          await sleep(150) // stay far below the public RPC rate limit
         }
-        if (!dead) setState({ scanning: false, complete: c.complete, lowest: c.lo })
-      } catch (e) {
-        if (!dead) setState((s) => ({ ...s, scanning: false, error: (e as Error).message.split('\n')[0] }))
+        failures = 0
+        if (!dead) setState({ scanning: false, retrying: false, complete: c.complete, lowest: c.lo })
+      } catch {
+        failures++
+        if (!dead) setState((s) => ({ ...s, scanning: false, retrying: true }))
       }
+      if (!dead) timer = setTimeout(step, failures ? backoffMs(failures) : POLL_MS)
     }
-    run()
-    const t = setInterval(run, 6000)
-    return () => { dead = true; clearInterval(t) }
+    step()
+    return () => { dead = true; clearTimeout(timer) }
     // parties are compared by value through partyKey
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pc, id, partyKey, more])
 
-  return { events, ...state, scanOlder: () => setMore((n) => n + 1) }
+  /** Grants the backward pass another budget and resumes it now. */
+  const scanOlder = () => {
+    if (cursor.current) cursor.current.budget = MAX_BACK_CHUNKS
+    setMore((n) => n + 1)
+  }
+  return { events, ...state, scanOlder }
 }
 
 // ---------------------------------------------------------------- oracle control API (optional, localhost)

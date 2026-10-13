@@ -1,4 +1,7 @@
-# GPU SLA Escrow (working title) — Monad Metropolis
+# Heartbond — pay per heartbeat
+
+Monad Metropolis hackathon project (working title was "GPU SLA Escrow"; the contract is still
+named `GpuSlaEscrow`).
 
 On-chain escrow that pays a GPU provider or refunds a renter based on per-slot uptime
 reports. Anyone can trigger settlement; finality is a fixed timeout. Uptime data comes

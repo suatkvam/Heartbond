@@ -231,3 +231,41 @@ decisions taken in response to the external review of 2026-10-01
   about slots of a served rental in which no probe ran: those are still reported "down".
 - **Affects:** PRD §7, §10, §20.
 
+## D-14 — Product name "Heartbond", tagline "pay per heartbeat"
+
+- **Date:** 2026-10-13
+- **Status:** Accepted
+- **Decision:** The product is named **Heartbond**, with the tagline "pay per heartbeat". It
+  replaces the working title "GPU SLA Escrow" in user-facing text (frontend, README, pitch
+  material). Code identifiers, the contract name `GpuSlaEscrow`, the ABI, file names and
+  the deployed address are not renamed.
+- **Why:** Owner's decision; the owner gave no further reason. "GPU SLA Escrow" was marked
+  as a working title in the previous PRD revision. Context (not the owner's words): the
+  frontend reads `shared/abi/GpuSlaEscrow.json`, so renaming files or the contract would
+  touch the frozen interface. Also not the owner's words, and to be confirmed by the owner:
+  the PRD §1 note that the name and tagline are brand lines — "heartbeat" read as the
+  oracle's health probe, payout still all-or-nothing per rental, and "bond" not meaning a
+  posted bond (none exists in the MVP, D-09). Not checked: whether another product or
+  trademark already uses the name.
+- **Affects:** PRD §1.
+
+## D-15 — Envio HyperIndex indexer as an optional read layer for the frontend
+
+- **Date:** 2026-10-13
+- **Status:** Accepted
+- **Decision:** The project adds an Envio HyperIndex indexer of the deployed contract's
+  events on Monad Testnet. It derives rentals, slots, objections, withdrawals and
+  per-provider and per-reporter aggregates and serves them over GraphQL. The frontend reads
+  its rentals list, rental history and a new provider-statistics panel from the indexer
+  when an indexer URL is configured, and falls back to direct RPC reads otherwise. The
+  contract, the oracle and the ABI are not changed. The work is timeboxed to four hours; if
+  it does not work end to end by then, the frontend changes are reverted.
+- **Why:** Owner's decision, to enter the Metropolis "Best Use of Envio" bounty. D-10
+  decided only against Chainlink CRE; the Envio proposal had stayed an open question in the
+  PRD. Context (not the owner's words): the frontend's log scan over the public RPC is
+  limited to 100 blocks per call, so history older than about an hour is slow to load, and
+  cross-rental figures such as a provider's uptime across rentals cannot be shown at all
+  without an index. Rejected by this decision: keeping the history on direct RPC reads
+  only, or cutting it.
+- **Affects:** PRD §8, §12, §13, §14, §21, §23.
+

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  computePhase, fmtClock, isCompliant, nextAction, outcomeText, parseDemoProviders, payeeOf, phaseBanner, phaseDeadline,
+  backoffMs, chunkRanges, computePhase, fmtClock, isCompliant, nextAction, outcomeText, parseDemoProviders, payeeOf, phaseBanner, phaseDeadline,
   revertMessage, roleOf, sameStartCheck, slotRange, upNeeded, validateCreate, withdrawHints, type Rental,
 } from './logic'
 
@@ -207,5 +207,21 @@ describe('revertMessage', () => {
   it('maps wallet rejection and falls back', () => {
     expect(revertMessage(new Error('User rejected the request.'))).toBe('Transaction rejected in the wallet')
     expect(revertMessage(new Error('boom'))).toBe('Transaction failed')
+  })
+})
+
+describe('log scan helpers', () => {
+  it('splits a range into inclusive chunks of at most 100 blocks', () => {
+    expect(chunkRanges(1n, 250n)).toEqual([[1n, 100n], [101n, 200n], [201n, 250n]])
+    expect(chunkRanges(1n, 100n)).toEqual([[1n, 100n]])
+    expect(chunkRanges(1n, 101n)).toEqual([[1n, 100n], [101n, 101n]])
+    expect(chunkRanges(7n, 7n)).toEqual([[7n, 7n]])
+    expect(chunkRanges(8n, 7n)).toEqual([]) // nothing new since the last scanned block
+    for (const [lo, hi] of chunkRanges(5n, 12_345n)) expect(hi - lo + 1n).toBeLessThanOrEqual(100n)
+  })
+  it('backs off exponentially and caps at 60 s', () => {
+    expect([1, 2, 3, 4, 5].map(backoffMs)).toEqual([2000, 4000, 8000, 16000, 32000])
+    expect(backoffMs(6)).toBe(60_000)
+    expect(backoffMs(50)).toBe(60_000)
   })
 })

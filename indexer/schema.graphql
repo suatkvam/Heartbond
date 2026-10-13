@@ -1,0 +1,96 @@
+type Rental {
+  id: ID!
+  rentalNumber: BigInt! @index
+  renter: String!
+  provider: String!
+  price: BigInt!
+  threshold: BigInt!
+  interval: BigInt!
+  start: BigInt!
+  end: BigInt!
+  nSlots: BigInt!
+  status: Int!
+  upCount: BigInt!
+  reportedCount: BigInt!
+  compliant: Boolean!
+  renterObjected: Boolean!
+  providerObjected: Boolean!
+  payee: String
+  outcomeAmount: BigInt
+  proposedAt: BigInt
+  createdAt: BigInt!
+  updatedAt: BigInt!
+  specRef: String!
+  slots: [Slot!]! @derivedFrom(field: "rental")
+  objections: [Objection!]! @derivedFrom(field: "rental")
+}
+
+type Slot {
+  id: ID!
+  rental: Rental!
+  index: BigInt!
+  up: Boolean!
+  reporter: String!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+}
+
+type Objection {
+  id: ID!
+  rental: Rental!
+  by: String!
+  isRenter: Boolean!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+}
+
+type Withdrawal {
+  id: ID!
+  account: String!
+  amount: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+}
+
+type Activity {
+  id: ID!
+  name: String! @index
+  rental_id: String @index
+  account: String @index
+  renter: String
+  provider: String
+  reporter: String
+  caller: String
+  by: String
+  isRenter: Boolean
+  slot: BigInt
+  up: Boolean
+  amount: BigInt
+  threshold: BigInt
+  interval: BigInt
+  nSlots: BigInt
+  upCount: BigInt
+  compliant: Boolean
+  payee: String
+  block: BigInt!
+  timestamp: BigInt!
+  txHash: String!
+  logIndex: Int!
+}
+
+type Provider {
+  id: ID!
+  rentals: BigInt!
+  compliantRentals: BigInt!
+  totalSlots: BigInt!
+  upSlots: BigInt!
+  uptimePercent: Float!
+}
+
+type Reporter {
+  id: ID!
+  reportsSent: BigInt!
+}

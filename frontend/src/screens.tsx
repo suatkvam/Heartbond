@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { hexToString, parseEventLogs, stringToHex } from 'viem'
 import { useAccount, useBalance, usePublicClient } from 'wagmi'
-import { ABI, DEMO_PROVIDERS, MOCK, addrUrl, monad, txUrl } from './config'
-import { useChainNow, useCredits, useCreditsOf, useEvents, useRental, useRentalList, useTx, useWindows } from './hooks'
+import { ABI, DEMO_PROVIDERS, INDEXER_URL, MOCK, addrUrl, monad, txUrl } from './config'
+import { useChainNow, useCredits, useCreditsOf, useEvents, useProviderStats, useRental, useRentalList, useTx, useWindows } from './hooks'
 import {
   RESERVE_WEI, fmtClock, isCompliant, mon, nextAction, outcomeText, payeeOf, phaseBanner, phaseDeadline, roleOf, sameAddr,
   sameStartCheck, short, upNeeded, validateCreate, withdrawHints, type CreateForm,
@@ -27,7 +27,7 @@ export function ListScreen() {
     <section className="card">
       <div className="head"><h2>Rentals</h2><a className="button" href="#/create">Create rental</a></div>
       {isLoading && <div className="stack"><Skeleton h={44} /><Skeleton h={44} /><Skeleton h={44} /></div>}
-      {error && !data && <p className="muted">RPC busy, retrying…</p>}
+      {error && !data && <p className="muted">{INDEXER_URL ? 'Indexer busy, retrying…' : 'RPC busy, retrying…'}</p>}
       {data && data.rows.length === 0 && (
         <div className="emptystate">
           <div className="slots sm">{[0, 0, 0, 0].map((_, i) => <span key={i} className="slot s0" />)}</div>
@@ -169,6 +169,7 @@ export function DetailScreen({ id }: { id: bigint }) {
   const { grace, window } = useWindows()
   const { data: myCredits } = useCredits(address)
   const history = useEvents(id, data ? [data.rental.renter, data.rental.provider] : [])
+  const providerStats = useProviderStats(data?.rental.provider)
   const settle = useTx(), object = useTx(), finalize = useTx()
 
   if (isLoading)
@@ -292,6 +293,20 @@ export function DetailScreen({ id }: { id: bigint }) {
               <div><dt>Start</dt><dd className="mono">{when(r.start)}</dd></div>
               <div><dt>End</dt><dd className="mono">{when(r.end)}</dd></div>
             </dl>
+          </section>
+
+          <section className="card">
+            <div className="feedhead"><h3>Provider stats</h3><span className="tag">all rentals</span></div>
+            {providerStats.isLoading && <Skeleton h={56} />}
+            {providerStats.error && !providerStats.data && <p className="muted">Provider totals could not be loaded.</p>}
+            {providerStats.data && (
+              <dl className="facts">
+                <div><dt>Rentals</dt><dd className="mono">{providerStats.data.rentals.toString()}</dd></div>
+                <div><dt>Compliant</dt><dd className="mono">{providerStats.data.compliantRentals.toString()}</dd></div>
+                <div><dt>UP slots</dt><dd className="mono">{providerStats.data.upSlots.toString()}/{providerStats.data.totalSlots.toString()}</dd></div>
+                <div><dt>Uptime</dt><dd className="mono">{providerStats.data.uptimePercent.toFixed(2)}%</dd></div>
+              </dl>
+            )}
           </section>
 
           <OraclePanel id={id} nSlots={slots.length} />

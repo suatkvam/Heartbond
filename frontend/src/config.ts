@@ -11,6 +11,7 @@ export const ABI = abiJson as Abi
 export const RPC_URL: string = env.VITE_RPC_URL || 'https://testnet-rpc.monad.xyz'
 export const EXPLORER: string = env.VITE_EXPLORER_URL || 'https://testnet.monadscan.com'
 export const ORACLE_API: string = env.VITE_ORACLE_API || 'http://localhost:8787'
+export const INDEXER_URL: string | undefined = env.VITE_INDEXER_URL?.trim() || undefined
 
 const dep = deployment as { address: string | null; deployBlock: number | null }
 export const ADDRESS = (env.VITE_ESCROW_ADDRESS || dep.address || undefined) as Address | undefined

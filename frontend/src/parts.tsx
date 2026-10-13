@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { txUrl } from './config'
+import { INDEXER_URL, txUrl } from './config'
 import { useOracle, type Ev, type TxState, type useEvents } from './hooks'
 import { PHASE, fmtClock, mon, short, slotRange } from './lib/logic'
 
@@ -112,12 +112,12 @@ export function ActivityFeed({ events, scanning, retrying, complete, lowest, sca
     <aside className="card feed">
       <div className="feedhead">
         <h3>On-chain activity</h3>
-        <span className={`live ${scanning || retrying ? 'on' : ''}`}>{mock ? 'mock' : retrying ? 'RPC busy, retrying' : scanning ? 'syncing' : 'live'}</span>
+        <span className={`live ${scanning || retrying ? 'on' : ''}`}>{mock ? 'mock' : retrying ? `${INDEXER_URL ? 'indexer' : 'RPC'} busy, retrying` : scanning ? 'syncing' : INDEXER_URL ? 'indexed' : 'live'}</span>
       </div>
       <div className="term" aria-live="polite">
         {events.length === 0 && !mock && scanning && (<><Skeleton h={14} w="85%" /><Skeleton h={14} w="70%" /><Skeleton h={14} w="78%" /></>)}
         {events.length === 0 && !mock && !scanning && !retrying && <p className="empty">No events found for this rental yet.</p>}
-        {events.length === 0 && !mock && !scanning && retrying && <p className="empty">Waiting for the RPC…</p>}
+        {events.length === 0 && !mock && !scanning && retrying && <p className="empty">Waiting for the {INDEXER_URL ? 'indexer' : 'RPC'}…</p>}
         {mock && <p className="empty">No chain in mock mode. After a deploy, every report, settle, objection, finalize and withdraw appears here as it lands.</p>}
         {events.map((e) => (
           <a key={`${e.tx}-${e.logIndex}`} className={`line ${evClass(e)}`} href={txUrl(e.tx)} target="_blank" rel="noreferrer">

@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: heartbond-envio-indexer
+description: Heartbond GpuSlaEscrow event indexer on Monad Testnet
+contracts:
+  - name: GpuSlaEscrow
+    handler: src/EventHandlers.ts
+    events:
+      - event: "RentalCreated(uint256 indexed rental_id, address indexed renter, address indexed provider, uint256 price, uint256 threshold, uint256 interval, uint256 start, uint256 end, uint256 n_slots, bytes32 spec_ref)"
+        field_selection:
+          transaction_fields:
+            - hash
+      - event: "UptimeReported(uint256 indexed rental_id, uint256 slot, bool up, address indexed reporter)"
+        field_selection:
+          transaction_fields:
+            - hash
+      - event: "SettlementProposed(uint256 indexed rental_id, uint256 up_count, uint256 n_slots, bool compliant, address indexed payee, uint256 amount, uint256 proposed_at, address caller)"
+        field_selection:
+          transaction_fields:
+            - hash
+      - event: "ObjectionRaised(uint256 indexed rental_id, address indexed by, bool is_renter)"
+        field_selection:
+          transaction_fields:
+            - hash
+      - event: "SettlementFinalized(uint256 indexed rental_id, address indexed payee, uint256 amount, address caller)"
+        field_selection:
+          transaction_fields:
+            - hash
+      - event: "Withdrawn(address indexed account, uint256 amount)"
+        field_selection:
+          transaction_fields:
+            - hash
+chains:
+  - id: 10143
+    start_block: 70661775
+    rpc:
+      - url: "https://testnet-rpc.monad.xyz"
+        for: sync
+        initial_block_interval: 100
+        interval_ceiling: 100
+    contracts:
+      - name: GpuSlaEscrow
+        address: "0x18C5f3F33262F9470Eb6ca4856deaaBAD4E0e59C"

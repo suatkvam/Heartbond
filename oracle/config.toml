@@ -1,0 +1,23 @@
+# Copy to oracle/config.toml and replace the placeholder addresses.
+#
+# The service reports a rental only if BOTH hold (SPEC H-8): its provider is under [nodes]
+# and its renter is in [renters] allow.
+#
+# provider address -> base URL of that provider's node (SPEC H-2). The oracle probes
+# GET <url>/health. Addresses are matched case-insensitively. A rental whose provider
+# is not listed here is not probed and not reported.
+#
+# The URLs below are the demo nodes from docker/docker-compose.yml. Give each provider
+# its own node, so stopping node-b does not fail the other rental.
+
+[nodes]
+"0x101c0294E3A0CbD0B2B29B4f1Bd8E4b0dF7103C6" = "http://127.0.0.1:8081"  # node-a
+"0xf2FD9e8272b52B7010Bf41b4791f910E6309211d" = "http://127.0.0.1:8082"  # node-b
+
+# Renter wallets whose rentals the service reports (D-11). Matched case-insensitively.
+# A rental created by any other wallet gets no probes and no reports, so it refunds its
+# renter. A missing or empty list means NO rental is served.
+[renters]
+allow = [
+    "0x6C40A69F095E4f04f2bf3c48AE470fd0D9ca34C9",  # demo renter wallet
+]

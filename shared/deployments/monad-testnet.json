@@ -1,10 +1,13 @@
 {
   "chainId": 10143,
-  "address": null,
-  "deployBlock": null,
-  "reporters": [],
+  "address": "0x18C5f3F33262F9470Eb6ca4856deaaBAD4E0e59C",
+  "deployBlock": 70661775,
+  "reporters": [
+    "0x949549d44Da1B6705C0Cb309809F5bA00548d711",
+    "0x9A77b3f57C4c28631726C4179B792c4Ae1b2De71"
+  ],
   "reportGrace": 30,
   "challengeWindow": 60,
-  "deployedAt": null,
-  "commit": null
+  "deployedAt": "2026-10-13T10:46:33Z",
+  "commit": "5c750c221cf4488c86c0fa6f34a4c5306ab15e86"
 }

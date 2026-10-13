@@ -31,7 +31,8 @@ export const monad = defineChain({
 export const wagmiConfig = createConfig({
   chains: [monad],
   connectors: [injected()],
-  transports: { [monad.id]: http(RPC_URL) },
+  // Batch concurrent contract reads (e.g. the Rentals list) into one JSON-RPC request.
+  transports: { [monad.id]: http(RPC_URL, { batch: { batchSize: 50, wait: 10 } }) },
 })
 
 /** Optional demo address book for the Create form: "label=0xaddress,label=0xaddress". Public addresses only. */

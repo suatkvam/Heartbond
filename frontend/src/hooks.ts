@@ -103,7 +103,7 @@ export function useRentalList(limit = 8) {
   const q = useQuery({
     queryKey: ['rental-list', limit],
     enabled: !MOCK && !!pc,
-    refetchInterval: 8000,
+    refetchInterval: 20_000,
     queryFn: async () => {
       if (INDEXER_URL) {
         type IndexedRental = {
@@ -136,16 +136,21 @@ export function useRentalList(limit = 8) {
       const next = (await read(pc!, 'next_rental_id')) as bigint
       const ids: bigint[] = []
       for (let i = next - 1n; i >= 1n && ids.length < limit; i--) ids.push(i)
-      const rows = await Promise.all(
-        ids.map(async (id): Promise<ListRow> => {
+      const rows: ListRow[] = []
+      // The public Monad RPC limits requests to 15/s. Read at most two rentals per
+      // burst so an 8-row list does not overwhelm it, even when the UI refreshes.
+      for (let offset = 0; offset < ids.length; offset += 2) {
+        if (offset > 0) await new Promise((resolve) => setTimeout(resolve, 600))
+        const group = await Promise.all(ids.slice(offset, offset + 2).map(async (id): Promise<ListRow> => {
           const [rental, slots] = await Promise.all([
             read(pc!, 'rentals', [id]) as Promise<Rental>,
             read(pc!, 'get_slots', [id]) as Promise<readonly number[]>,
           ])
           const normalized = { ...rental, status: Number(rental.status) }
           return { id, rental: normalized, phase: computePhase(normalized, now), slots: slots.map(Number) }
-        }),
-      )
+        }))
+        rows.push(...group)
+      }
       return { total: Number(next - 1n), rows }
     },
   })

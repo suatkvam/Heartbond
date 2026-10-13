@@ -283,16 +283,17 @@ cut order stays usable.
 
 ## T-018 — Oracle: renter allow-list and per-rental report budget
 
-- **Status:** blocked
+- **Status:** done
+- **Result (2026-10-13):** tests first (20 new tests red, then green); `pytest -q oracle/tests/` 117 passed, `pytest -q tests/` 253, `pytest -q scripts/` 35. Reading of "cannot be below N" applied: each slot's first send reserved, N shared re-submissions — to be confirmed by the owner. Known side effect: once re-submissions are spent, a stuck transaction is no longer replaced, so later reports from the same reporter key queue behind its nonce.
 - **Owner:** oracle-engineer
-- **PRD:** §10 ("Which rentals the service reports"), §15 (reporter gas griefing), §21, §23 (report budget semantics)
+- **PRD:** §10 ("Which rentals the service reports"), §15 (reporter gas griefing), §21; SPEC H-8, H-9
 - **Decisions:** D-11, D-13
-- **Depends on:** T-013. Waits for: owner — PRD §23 "Report budget semantics" (do re-sends count; may the budget be below the slot count `N`; default value).
-- **Files:** `oracle/` (config, service, tests, README), `oracle/config.example.toml`; SPEC §4 gets an H-rule when the owner asks
+- **Depends on:** T-013. (The budget question was answered on 2026-10-13: D-11 clarification — budget = 2 × N, re-submissions count, never below N; SPEC H-8, H-9.)
+- **Files:** `oracle/` (config, service, tests, README), `oracle/config.example.toml`
 - **Acceptance:**
   - A rental whose renter is not on the allow-list in `oracle/config.toml` is ignored at discovery: no probes, no `get_slots` call, no transaction; one log line.
   - A listed renter's rental is reported; address matching is case-insensitive; an invalid address in the list fails at start.
-  - The service never sends more report transactions for one rental than the budget, and logs once when it is spent.
+  - The service broadcasts at most `2 * n_slots` report transactions per rental: each slot's first send is always allowed, re-submissions (retry or fee replacement) share `n_slots` more; a send refused before broadcast does not count; one log line when the re-submissions are spent.
   - End-to-end demo scenarios still pass with the demo renter on the list.
   - `docs/UI_HANDOFF.md` §7 says that unserved rentals do not appear in `/rentals` (interface-sync).
 - **Out of scope:** any on-chain restriction on who may create a rental.

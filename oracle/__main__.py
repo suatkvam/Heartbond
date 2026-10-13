@@ -3,7 +3,7 @@
 Environment (export it yourself; this process does not read .env):
   MONAD_RPC       RPC URL (required)
   REPORTER_KEYS   comma-separated reporter private keys, testnet only (required)
-  ORACLE_CONFIG   provider -> node URL file (default oracle/config.toml)
+  ORACLE_CONFIG   provider -> node URL and renter allow-list file (default oracle/config.toml)
   LOG_CHUNK       blocks per eth_getLogs call (default 1000; lower it if the RPC refuses)
   ORACLE_API_PORT control API port on 127.0.0.1 (default 8787; docs/UI_HANDOFF.md section 7)
 Contract address, deploy block and chain id come from shared/deployments/monad-testnet.json.
@@ -22,7 +22,7 @@ from web3 import Web3
 
 from oracle.api import PORT, create_app
 from oracle.chain import Chain
-from oracle.config import load_nodes
+from oracle.config import load_nodes, load_renters
 from oracle.service import LOG_CHUNK, Service
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -50,7 +50,8 @@ def main() -> None:
         # `from None`: the original error could echo a malformed key.
         raise SystemExit("oracle: REPORTER_KEYS holds an invalid private key") from None
     try:
-        nodes = load_nodes(os.environ.get("ORACLE_CONFIG", ROOT / "oracle" / "config.toml"))
+        config = os.environ.get("ORACLE_CONFIG", ROOT / "oracle" / "config.toml")
+        nodes, renters = load_nodes(config), load_renters(config)
     except ValueError as exc:  # bad address / URL (and TOML syntax errors)
         raise SystemExit(f"oracle: {exc}") from None
     w3 = Web3(Web3.HTTPProvider(rpc))
@@ -58,13 +59,14 @@ def main() -> None:
     if chain.chain_id != dep["chainId"]:
         raise SystemExit(f"oracle: RPC chain id {chain.chain_id} != deployment chain id {dep['chainId']}")
     print(f"oracle contract={dep['address']} deploy_block={dep['deployBlock']} nodes={len(nodes)} "
+          f"renters={len(renters)} "
           f"reporters={[a.address for a in chain.accounts]}", flush=True)
     chain.warn_low_balances()
 
     async def run() -> None:
         async with httpx.AsyncClient() as http:
             chunk = int(os.environ.get("LOG_CHUNK", LOG_CHUNK))
-            svc = Service(chain, nodes, http, dep["deployBlock"], chunk)
+            svc = Service(chain, nodes, renters, http, dep["deployBlock"], chunk)
             # One process, one event loop: uvicorn serves the control API while the
             # service loop ticks. 127.0.0.1 only - the API has no authentication.
             port = int(os.environ.get("ORACLE_API_PORT", PORT))

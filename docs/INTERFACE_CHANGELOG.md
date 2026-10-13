@@ -2,6 +2,38 @@
 
 Written by the `interface-sync` agent. Newest on top. **BREAKING** = the UI must change.
 
+## 2026-10-13 — oracle serves only allow-listed renter wallets; report budget (T-018, SPEC H-8/H-9; no contract/ABI change)
+- Oracle-side behaviour only. No contract change. ABI regenerated; `git diff --stat shared/abi` is
+  empty: no function, event or field added, removed or renamed. Not BREAKING for the ABI. The
+  control API shapes are unchanged too (no key added, removed or renamed in `/health`, `/nodes`,
+  `/rentals`, `/rentals/{id}`, `force-down`). This replaces the "decided but not implemented"
+  note in the entry below: both are implemented now.
+- **Renter allow-list (H-8).** The oracle serves a rental only if BOTH hold: the provider has a
+  node under `[nodes]` in the oracle config AND the renter wallet is in `[renters] allow` in
+  `oracle/config.toml`. A rental failing either gate is absent from `/rentals`, gets 404 on
+  `/rentals/{id}` (and on `force-down`), receives no probes and no reports, keeps its slots empty
+  on-chain and settles as a **refund to the renter**, even when its provider node is healthy.
+  `create_rental` itself stays open to everyone; the chain rejects nobody. An empty list means no
+  rental is served.
+  - Affects **Rental detail**, **Create rental** (indirectly) and the optional **Oracle panel**.
+  - What the teammate must do: **send Sora the renter wallet address(es) used for testing and the
+    demo before creating rentals**, so they can be put on the list (the list is read once at
+    oracle start; Sora restarts the service after editing it). Keep the "not monitored by the
+    oracle" notice for rentals absent from `/rentals` while the API is reachable; the API does not
+    say which gate failed, so keep the text generic. No code change is required.
+- **Report budget (H-9).** At most `2 × n_slots` report transactions per rental: the first send of
+  each slot is never blocked by the budget, re-sends share a pool of `n_slots` more. Once the pool
+  is used, a slot that still needs a re-send can stay unreported on-chain, which counts as Down.
+  - In the API such a slot shows either `reported: false` / `txHash: null` permanently, or
+    `reported: true` with the hash of a transaction that may never confirm. Conversely a slot the
+    oracle gave up on can show `reported: false` although an earlier transaction for it landed
+    later. There is no field that marks a given-up slot.
+  - What the teammate must do: colour slots and count Up from the chain (`get_slots(id)`), never
+    from the API's `reported` / `up`. Affects **Rental detail** and the optional **Oracle panel**.
+- `docs/UI_HANDOFF.md` §7 updated (doc only): `/rentals` bullet, "İzlenmeyen kiralamalar" block,
+  new "Rapor bütçesi" block, `reported` field note.
+- Not deployed (`shared/deployments/monad-testnet.json` unchanged, `address: null`).
+
 ## 2026-10-13 — two new `create_rental` revert strings and form limits (D-12, SPEC v1.2; ABI unchanged)
 - `create_rental` has two new checks. Not BREAKING for the ABI (no function, event or field added,
   removed or renamed; `git diff --stat shared/abi` is empty), but the UI must act on both:

@@ -37,6 +37,7 @@ def env(env):
     assert env.c.functions.CHALLENGE_WINDOW().call() == WINDOW
     assert not env.c.functions.is_reporter(env.stranger).call()
     assert env.stranger not in (env.renter, env.prov_a, env.prov_b)
+    assert env.renters == {env.renter.lower()}  # H-8: only the demo renter is served
     return env
 
 
@@ -243,3 +244,22 @@ def test_f_objection_by_losing_party_does_not_change_payout(env, node_fails):
     assert (final["payee"], final["amount"]) == (proposal["payee"], proposal["amount"])
     assert env.c.functions.credits(loser).call() == 0
     withdraw(env, payee, PRICE)
+
+
+def test_g_rental_from_wallet_not_on_allow_list_gets_no_reports_and_refunds_its_renter(env):
+    """H-8 (D-11): e.g. a judge's wallet rents from a configured, healthy provider."""
+    start = env.chain.now() + 15
+    rid = env.create(env.prov_a, start, renter=env.outsider)
+    assert env.outsider.lower() not in env.renters and rental(env, rid)["renter"] == env.outsider
+    svc = env.service()
+    drive(env, svc, start)
+
+    assert rid not in svc.state.rentals and not svc.state.reports
+    assert env.probes == []  # the healthy node was never asked
+    assert env.reported() == []  # zero UptimeReported events
+    assert env.slots(rid) == [0] * N
+    assert env.nonce(0) == env.nonce(1) == 0  # no reporter key spent anything
+    assert rental(env, rid)["reported_count"] == 0
+
+    pay_out(env, rid, payee=env.outsider, loser=env.prov_a, compliant=False, up_count=0)
+    assert env.w3.eth.get_balance(env.c.address) == 0

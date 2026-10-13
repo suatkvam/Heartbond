@@ -126,6 +126,8 @@ Backfill of any completed Empty slot is allowed until `end + REPORT_GRACE`.
 - H-5 Force-down override (backup if Docker fails on stage): marks chosen slots Down regardless of probes.
 - H-6 Small HTTP control API (see `docs/UI_HANDOFF.md` §7). Optional for the UI.
 - H-7 Logs every probe and tx hash to stdout — this log is shown in the demo video.
+- H-8 Serves a rental only if **both** hold, checked at discovery from the `RentalCreated` event, before any probe, `get_slots` call or transaction: the provider has a node in `oracle/config.toml` (D-13) and the renter is on the allow-list in `oracle/config.toml` (D-11). An unserved rental gets no probes and no reports; its slots stay Empty and count as Down at settle. One log line per ignored rental.
+- H-9 Report budget (D-11, clarified 2026-10-13): at most `2 * n_slots` `report_uptime` transactions are broadcast per rental. Every broadcast (a send that returned a transaction hash) counts, including a retry or a fee replacement of a slot already sent; a send refused or failed before broadcast does not. The first broadcast of each slot is always allowed (at most `n_slots`); re-submissions share the other `n_slots`. When those are used the service re-sends nothing more for that rental and logs it once; first sends of later slots still go out. The budget bounds the H-4 retries.
 
 ## 5. Demo parameters (from PRD §20, unchanged)
 interval 30 s, N = 4 (120 s), threshold 75, start = now + 15 s, price 0.01 MON.
@@ -162,6 +164,7 @@ withdraw by a contract that rejects MON fails only for itself, reports for 2 ren
 | C-1.8 | `price := msg.value` | Removes a redundant parameter |
 | H-* | Oracle probes a real Docker health endpoint; force-down kept as backup | Reviewer demo suggestion |
 | §7 | Monad numbers re-checked against live docs | Reviewer #2 |
+| H-8, H-9 | Oracle serves only allow-listed renters with configured provider nodes; report budget `2 * n_slots` per rental (D-11, D-13; 2026-10-13) | Security review 2026-10-13: spam rentals could drain reporter keys |
 | H-3 | Zero-probe slot is Down (D-04 clarification, 2026-10-13) | Review 2026-10-13: "every probe succeeded" was vacuously true with no probes |
 | C-1.11, C-1.12 | `start` at most 30 days ahead, `interval` at most 1 day (D-12, 2026-10-13) | Security review 2026-10-13: unbounded `end` overflowed `end + REPORT_GRACE` and locked the renter's escrow |
 | C | Check order stated: C-1.1..C-1.9, C-1.11, C-1.12 (2026-10-13, spec v1.2) | Tests assert exact strings; double violations need a defined winner |

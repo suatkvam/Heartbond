@@ -187,6 +187,16 @@ decisions taken in response to the external review of 2026-10-01
   decision: keep the contract permissionless and put the limit in the off-chain service.
   Rejected: restricting who may create rentals on-chain.
 - **Affects:** PRD §8, §10, §12, §15, §20, §21, §23.
+- **Clarified 2026-10-13:** The report budget of a rental is 2 × N report transactions,
+  where N is its slot count. Every report transaction the service sends for the rental
+  counts, including a re-submission of a slot it already sent (a retry or a fee
+  replacement). The budget cannot be below N. This replaces "a configured number" above
+  and closes the open question on budget semantics (PRD §23); owner's decision. Reading
+  applied in the PRD and SPEC H-9 (the recorder's interpretation of "cannot be below N",
+  to be confirmed by the owner): the first send of each slot is always allowed and
+  re-submissions share the other N transactions, so the budget is a fixed 2 × N, not a
+  configuration value, and one slot's retries cannot stop a later slot's first send. A send
+  refused before it is broadcast is not a transaction and does not count.
 
 ## D-12 — Creation bounds: start at most 30 days ahead, interval at most one day
 

@@ -1,4 +1,5 @@
-"""Oracle service core: discovery, probe loop, report submission (SPEC H-1, H-3, H-4, H-7).
+"""Oracle service core: discovery, probe loop, report submission (SPEC H-1, H-3, H-4, H-7),
+the two serving gates (H-8) and the per-rental report budget (H-9).
 
 One step function, `Service.tick(now)`, where `now` is CHAIN time (latest block
 timestamp). The local clock is used only to pace the loop in `run()`.
@@ -30,7 +31,8 @@ class SlotReport:
     nonce: int | None = None # nonce of that tx; a re-send of a stuck tx reuses it (review M-3)
     fees: tuple[int, int] = (0, 0)  # (max fee, priority fee) of that tx, bumped on a re-send
     done: bool = False       # slot is non-empty on-chain
-    gave_up: bool = False    # reporting window closed before a report landed
+    gave_up: bool = False    # reporting window closed, or budget spent, before a report landed
+    sends: int = 0           # broadcasts made for this slot (H-9); in memory, reset by a restart
 
 
 @dataclass
@@ -40,13 +42,19 @@ class State:
     rentals: dict[int, Rental] = field(default_factory=dict)
     reports: dict[tuple[int, int], SlotReport] = field(default_factory=dict)  # (rental_id, slot)
     last_probe: dict[str, tuple[bool, int, float]] = field(default_factory=dict)  # provider -> (ok, chain ts, ms)
+    budget_spent: set[int] = field(default_factory=set)                # rental ids whose H-9 line was logged
 
 
 class Service:
-    def __init__(self, chain: Chain, nodes: dict[str, str], http: httpx.AsyncClient,
-                 deploy_block: int, log_chunk: int = LOG_CHUNK):
-        self.chain, self.nodes, self.http, self.log_chunk = chain, nodes, http, log_chunk
+    def __init__(self, chain: Chain, nodes: dict[str, str], renters: set[str],
+                 http: httpx.AsyncClient, deploy_block: int, log_chunk: int = LOG_CHUNK):
+        """`nodes` and `renters` as returned by oracle.config (lower-cased addresses)."""
+        self.chain, self.nodes, self.renters = chain, nodes, renters
+        self.http, self.log_chunk = http, log_chunk
         self.state = State(last_block=deploy_block - 1)
+        if not renters:  # H-8 fails closed
+            print("WARNING renter allow-list is empty - no rental will be served "
+                  "(set [renters] allow in the oracle config)", flush=True)
 
     async def tick(self, now: int) -> None:
         # web3 calls are synchronous: discover/report run in a worker thread so the
@@ -73,8 +81,12 @@ class Service:
             hi = min(lo + self.log_chunk - 1, head)
             for a in self.chain.rental_created(lo, hi):
                 rid = a["rental_id"]
+                # H-8: both gates, decided from the event alone, before any other call.
                 if node_url(self.nodes, a["provider"]) is None:
                     print(f"ignore rental={rid} provider={a['provider']} reason=no-node-in-config", flush=True)
+                    continue
+                if a["renter"].lower() not in self.renters:
+                    print(f"ignore rental={rid} renter={a['renter']} reason=renter-not-allowed", flush=True)
                     continue
                 if rid in st.rentals:
                     continue  # rescanned chunk: keep the probe counts and force-down marks
@@ -98,7 +110,8 @@ class Service:
             r.record(now, self.state.last_probe[r.provider.lower()][0])
 
     def report(self, now: int) -> None:
-        """H-4: report every slot completed by chain time; retry until end + REPORT_GRACE."""
+        """H-4: report every slot completed by chain time; retry until end + REPORT_GRACE
+        or until the H-9 budget is spent, whichever comes first."""
         for r in self.state.rentals.values():
             for k in range(r.n_slots):
                 if now < r.start + (k + 1) * r.interval:
@@ -137,6 +150,20 @@ class Service:
         up = rep.up if replace else r.verdict(k)
         reporter = self.chain.account_for(r.rental_id).address
         tag = f"rental={r.rental_id} slot={k}"
+        # H-9 budget (D-11): at most 2 * n_slots broadcasts per rental. The first broadcast
+        # of each slot is always allowed (at most n_slots of those); every later broadcast
+        # of a slot - a re-send after a failed tx or a same-nonce fee replacement - comes
+        # out of one pool of n_slots shared by the rental. So a slot never broadcast is
+        # never blocked by other slots' retries. A send that raises is not counted.
+        if rep.sends:
+            sends = [s.sends for j in range(r.n_slots) if (s := self.state.reports.get((r.rental_id, j)))]
+            if sum(sends) - sum(map(bool, sends)) >= r.n_slots:
+                rep.gave_up = True
+                if r.rental_id not in self.state.budget_spent:
+                    self.state.budget_spent.add(r.rental_id)
+                    print(f"budget-spent rental={r.rental_id} used={sum(sends)}/{2 * r.n_slots} "
+                          f"- no more re-submissions for this rental", flush=True)
+                return
         try:
             tx, nonce, *fees = self.chain.send_report(r.rental_id, k, up, replace)
         except Exception as exc:
@@ -154,6 +181,7 @@ class Service:
                 print(f"report-error {tag} reporter={reporter} {why} - will retry", flush=True)
             return
         rep.up, rep.tx, rep.sent_at, rep.nonce, rep.fees = up, tx, now, nonce, tuple(fees)
+        rep.sends += 1
         print(f"tx hash={tx} {tag} up={up} reporter={reporter}"
               f"{f' replaces-nonce={nonce}' if replace else ''}", flush=True)  # H-7
 

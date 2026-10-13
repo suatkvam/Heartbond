@@ -1,5 +1,8 @@
 # Copy to oracle/config.toml and replace the placeholder addresses.
 #
+# The service reports a rental only if BOTH hold (SPEC H-8): its provider is under [nodes]
+# and its renter is in [renters] allow.
+#
 # provider address -> base URL of that provider's node (SPEC H-2). The oracle probes
 # GET <url>/health. Addresses are matched case-insensitively. A rental whose provider
 # is not listed here is not probed and not reported.
@@ -10,3 +13,11 @@
 [nodes]
 "0x00000000000000000000000000000000000000A1" = "http://127.0.0.1:8081"  # node-a
 "0x00000000000000000000000000000000000000B2" = "http://127.0.0.1:8082"  # node-b
+
+# Renter wallets whose rentals the service reports (D-11). Matched case-insensitively.
+# A rental created by any other wallet gets no probes and no reports, so it refunds its
+# renter. A missing or empty list means NO rental is served.
+[renters]
+allow = [
+    "0x00000000000000000000000000000000000000C3",  # demo renter wallet
+]

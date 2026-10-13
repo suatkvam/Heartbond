@@ -1,6 +1,6 @@
 # UI Devir Belgesi — GPU SLA Escrow
 
-> Frontend'i yazan arkadaş için. Bunu ve `shared/abi/GpuSlaEscrow.json` dosyasını
+> UI'ı kim yazıyorsa onun için (Sora ya da bir kodlama modeli). Bunu ve `shared/abi/GpuSlaEscrow.json` dosyasını
 > kendi AI aracına da verebilirsin; ihtiyacın olan her şey burada.
 > Değişiklikler `docs/INTERFACE_CHANGELOG.md` dosyasına yazılır, oraya bakman yeterli.
 
@@ -36,7 +36,7 @@ UI'da bunu gizlememiz gerekmiyor; "Reporter: team-held" gibi küçük bir etiket
 
 | Konu | Kimde |
 |---|---|
-| `frontend/` klasörü, tasarım, tüm ekranlar | **sen** |
+| `frontend/` klasörü, tasarım, tüm ekranlar | UI'ı yazan (Sora ya da Sora'nın çalıştırdığı kodlama modeli) |
 | Kontrat, oracle, deploy, testler, demo akışı | Sora |
 | `shared/abi/GpuSlaEscrow.json` (ABI) | Sora üretir, sen okursun |
 | `shared/deployments/monad-testnet.json` (adres, deploy bloğu) | Sora deploy ettikçe günceller |
@@ -210,7 +210,8 @@ da çalışmalı** — doğruluk kaynağı zincir. Bu API sadece demo panelini z
 **Alanların anlamı:**
 - `reported`: o slot için rapor tx'i **gönderildiği andan** itibaren (ya da slot zincirde dolu
   bulunduysa) `true`. Tx onaylanmayı beklerken de `true`'dur. Tx başarısız olursa yeniden
-  gönderilene kadar geçici olarak `false`'a dönebilir.
+  gönderilene kadar `false`'a dönebilir; rapor bütçesi bittiyse ya da raporlama süresi
+  kapandıysa **kalıcı olarak `false` kalabilir** (aşağıda "Rapor bütçesi").
 - `up`: `reported` olduktan sonra gönderilen / zincirdeki karar; ondan önce "şimdi gönderilse"
   kararı. Bu yüzden hiç probe yapılmamış **gelecekteki bir slot `up: false` görünür**. Slotu
   renklendirmeden önce `reported` ve `probesTotal`'a bak (`reported: false` → gri/bekliyor).
@@ -223,22 +224,47 @@ da çalışmalı** — doğruluk kaynağı zincir. Bu API sadece demo panelini z
 - `balanceMon`: MON cinsinden ondalıklı sayı (float, wei değil), ~30 sn önbellekli; RPC okuması
   başarısız olduysa `null`. `/health.ok`: son RPC bakiye okuması başarılı oldu demek
   (oracle'ın genel sağlığı değil). `/health`'i 30 sn'den sık sorgulamak yeni veri getirmez.
-- `/rentals` sadece oracle'ın izlediği kiralamaları döner: sağlayıcısı oracle config'inde
-  olmayan kiralamalar **listede görünmez** ve `/rentals/{id}` onlar için 404 verir. Kiralama
+- `/rentals` sadece oracle'ın izlediği kiralamaları döner: sağlayıcısının node'u oracle
+  config'inde olmayan **ya da kiracı cüzdanı oracle'ın izin listesinde (allow-list) olmayan**
+  kiralamalar **listede görünmez** ve `/rentals/{id}` onlar için 404 verir. Kiralama
   listesini zincirden kur (`next_rental_id`), bu API'den değil.
 
 **İzlenmeyen kiralamalar:**
-- Oracle sadece **sağlayıcısının node'u kendi config'inde tanımlı** olan kiralamaları raporlar.
-  Diğerleri için hiç rapor gönderilmez: `/rentals` içinde görünmezler, zincirde slotları boş (0)
-  kalır ve settle edildiklerinde sonuç **kiracıya iade** olur (boş slot UP sayılmaz).
+- Oracle bir kiralamayı ancak **iki koşul birden** sağlanıyorsa izler ve raporlar:
+  1. **sağlayıcı (provider)** adresinin oracle config'inde tanımlı bir node'u var (`[nodes]`), **ve**
+  2. **kiracı (renter)** cüzdanı oracle'ın izin listesinde (`oracle/config.toml` içinde `[renters] allow`).
+- İkisinden biri tutmuyorsa o kiralama için hiç probe yapılmaz, hiç rapor gönderilmez:
+  `/rentals` içinde görünmez, `/rentals/{id}` 404 verir, zincirde slotları boş (0) kalır ve
+  settle edildiğinde sonuç **kiracıya iade** olur (boş slot UP sayılmaz). Sağlayıcının node'u
+  sağlıklı olsa bile böyledir.
+- **Demo/test için yapman gereken:** kiralama oluşturacağın **kiracı cüzdan adresini Sora'ya
+  ver**, o da izin listesine eklesin. Liste oracle başlarken bir kez okunur (Sora ekledikten sonra
+  servisi yeniden başlatır), bu yüzden adresi **kiralamayı oluşturmadan önce** ver. Listede
+  olmayan bir cüzdanla açtığın her kiralama raporsuz kalır ve iade ile biter. Liste boşsa oracle
+  hiçbir kiralamayı izlemez.
+- Kontrat tarafında değişiklik yok: `create_rental` hâlâ herkese açık, zincir kimseyi reddetmez.
+  Kısıt sadece oracle'ın hangi kiralamalara rapor gönderdiğinde.
 - UI: kontrol API'sine ulaşılabiliyorken (`/health` cevap veriyor) bir kiralama `/rentals`
   içinde yoksa detay ekranında "Bu kiralama oracle tarafından izlenmiyor — slotlar boş kalacak,
   sonuç kiracıya iade olacak" gibi bir bilgi göster. API'ye ulaşılamıyorsa bu bilgiyi gösterme
-  (izlenip izlenmediği bilinemez).
-- **Henüz yok, karar verildi (D-11):** oracle'a bir kiracı izin listesi (allow-list) ve kiralama
-  başına rapor bütçesi eklenecek. Şu an ikisi de **uygulanmadı**; bugün tek ölçüt sağlayıcının
-  node'u. Eklendiklerinde listede olmayan cüzdanların açtığı kiralamalar da izlenmeyecek ve aynı
-  bilgi onlar için de geçerli olacak. Değişince CHANGELOG'a yazılır.
+  (izlenip izlenmediği bilinemez). API hangi koşulun tutmadığını söylemez; mesajı genel tut.
+
+**Rapor bütçesi:**
+- Oracle bir kiralama için en fazla **`2 × n_slots`** rapor tx'i gönderir. Her slotun **ilk**
+  gönderimini bütçe hiçbir zaman engellemez (en fazla `n_slots` tane); yeniden gönderimler
+  (başarısız tx'in tekrarı ya da takılan tx'in daha yüksek ücretle değiştirilmesi) kiralamanın
+  tamamı için ortak **`n_slots`** tanelik bir havuzdan düşer.
+- Havuz bitince oracle o kiralamada artık yeniden gönderim yapmaz; sonradan biten slotların ilk
+  gönderimi yine yapılır. Yeniden gönderime ihtiyacı olan slot zincirde boş kalırsa **DOWN
+  sayılır**; yani node çalışmış olsa bile kiralama iade ile bitebilir.
+- API'de böyle bir slot iki şekilde görünebilir (yeni alan yok, ayırt eden bir bayrak yok):
+  - `reported: false`, `txHash: null` — kalıcı olarak (önceki tx revert ettiyse).
+  - `reported: true` ve bir `txHash` — son tx hâlâ bekliyorken bütçe bittiyse; bu tx hiç
+    onaylanmayabilir ve API bunu artık güncellemez.
+- Tersi de olabilir: oracle'ın vazgeçtiği bir slot API'de `reported: false` görünürken, o slot
+  için **daha önce gönderilmiş bir tx sonradan zincire girmiş** olabilir. API bunu yansıtmaz.
+- Sonuç: slot rengi ve UP sayısı için doğruluk kaynağı **her zaman zincir** — `get_slots(id)`.
+  API'deki `reported` / `up` sadece panel bilgisi.
 
 **`POST /rentals/{id}/force-down`:**
 - Gövde JSON olmalı ve `content-type: application/json` ile gitmeli. `slots`: tam sayılar

@@ -36,7 +36,7 @@ class Env:
         self.w3 = Web3(EthereumTesterProvider())
         self.tester = self.w3.provider.ethereum_tester
         self.abi = json.loads((ROOT / "shared/abi/GpuSlaEscrow.json").read_text())
-        self.funder, self.renter, self.prov_a, self.prov_b, self.stranger = self.w3.eth.accounts[:5]
+        self.funder, self.renter, self.prov_a, self.prov_b, self.stranger, self.outsider = self.w3.eth.accounts[:6]
         self.keys = [Account.create() for _ in balances]  # generated in-process, never real
         for acct, mon in zip(self.keys, balances):
             self.w3.eth.send_transaction({"from": self.funder, "to": acct.address, "value": mon * 10**18})
@@ -49,6 +49,7 @@ class Env:
         self.status = {"a.test": 200, "b.test": 200}  # host -> HTTP status of /health
         self.probes = []
         self.nodes = {self.prov_a.lower(): URL_A, self.prov_b.lower(): URL_B}
+        self.renters = {self.renter.lower()}  # H-8 allow-list: the demo renter; `outsider` is not on it
 
     def handler(self, request):
         self.probes.append(request.url.host)
@@ -56,11 +57,11 @@ class Env:
 
     def service(self, **kw):
         http = httpx.AsyncClient(transport=httpx.MockTransport(self.handler))
-        return Service(self.chain, self.nodes, http, self.deploy_block, **kw)
+        return Service(self.chain, self.nodes, self.renters, http, self.deploy_block, **kw)
 
-    def create(self, provider, start):
+    def create(self, provider, start, renter=None):
         self.c.functions.create_rental(provider, 75, INTERVAL, start, start + N * INTERVAL, b"\0" * 32).transact(
-            {"from": self.renter, "value": 10**16})
+            {"from": renter or self.renter, "value": 10**16})
         return self.c.functions.next_rental_id().call() - 1
 
     def warp(self, ts):

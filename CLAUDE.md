@@ -2,7 +2,7 @@
 
 On-chain escrow that pays a GPU provider or refunds a renter from per-slot uptime
 reports; anyone can trigger settlement; finality is a fixed timeout.
-Team of 2: **Sora** owns everything except the UI; **the teammate owns `frontend/`**.
+**Sora** owns and builds everything, including the UI in `frontend/`; there is no separate UI teammate.
 
 ## Source of truth
 1. `docs/SPEC.md` — rule IDs (C-, O-, S-, X-, F-, P-, R-, H-, T-). Code must match it.
@@ -18,16 +18,16 @@ If a request contradicts SPEC, say so and propose a SPEC change first (log it in
 | `tests/` | Sora | test-engineer |
 | `oracle/`, `docker/` | Sora | oracle-engineer |
 | `scripts/` | Sora | contract-engineer (deploy script), oracle-engineer (scripted demo fallback) — agents write, only Sora runs them against testnet |
-| `shared/abi/`, `shared/deployments/`, `docs/UI_HANDOFF.md`, `docs/INTERFACE_CHANGELOG.md` | Sora → teammate | interface-sync only |
+| `shared/abi/`, `shared/deployments/`, `docs/UI_HANDOFF.md`, `docs/INTERFACE_CHANGELOG.md` | Sora | interface-sync only |
 | `docs/pitch/`, `README.md` | Sora | pitch-factchecker |
-| `frontend/` | **teammate** | **never** — read only |
+| `frontend/` | Sora | only when Sora asks for UI work; a UI task never edits `contracts/`, `oracle/`, `scripts/` or `shared/abi/` |
 | `docs/SPEC.md`, `docs/PRD.md` | Sora | only when Sora explicitly asks |
 
 ## Stack
 - Vyper 0.4.3 contract, tested with titanoboa + pytest (`pytest -q`)
 - Oracle: Python 3.11, web3.py, httpx, FastAPI (control API)
 - Monad Testnet: chain id 10143, RPC `https://testnet-rpc.monad.xyz`
-- Frontend (teammate): viem ≥ 2.40, reads `shared/abi/GpuSlaEscrow.json` + `shared/deployments/monad-testnet.json`
+- Frontend (Sora): viem ≥ 2.40, reads `shared/abi/GpuSlaEscrow.json` + `shared/deployments/monad-testnet.json`
 
 ## Commands
 - Compile + ABI: `vyper -f abi contracts/GpuSlaEscrow.vy > shared/abi/GpuSlaEscrow.json`
@@ -56,7 +56,7 @@ Order for a feature: test-engineer (failing tests) → contract-engineer / Sora 
 security-reviewer → interface-sync. Never deploy with failing tests.
 
 ## Hard rules
-- Never touch `frontend/`. If the UI needs something, write it into `docs/UI_HANDOFF.md`
+- Write `frontend/` only when Sora asks for UI work. A UI task never edits `contracts/`, `oracle/`, `scripts/` or `shared/abi/`: if the UI needs a contract change, write it first into `docs/UI_HANDOFF.md`
   via interface-sync and tell Sora.
 - Public interface (names, argument order, events, `phase` values) is frozen; changing it
   requires interface-sync to regenerate the ABI and append to `docs/INTERFACE_CHANGELOG.md`.

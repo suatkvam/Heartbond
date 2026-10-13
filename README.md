@@ -16,11 +16,44 @@ from team-held reporter keys (not trustless — see docs/PRD.md §10, §13).
 | `CLAUDE.md`, `.claude/agents/` | Claude Code setup |
 
 ```bash
-pip install -r requirements.txt
-pytest -q tests/                      # views pass, the rest go green as you implement
-python scripts/smoke_test.py          # day-0 check on Monad Testnet (needs .env)
+make install
+make test
 ```
-_The pitch-factchecker agent replaces this README before submission._
+
+## Run locally
+
+You need Python 3.12+, Node.js 20+, npm, pnpm, Docker with Compose, and GNU Make. The UI can
+run against the already deployed Monad Testnet contract; no local contract deployment or
+private key is needed to browse it.
+
+From the repository root:
+
+```bash
+make install       # create .venv and install Python dependencies
+make ui-install    # install frontend dependencies
+make config        # create oracle/config.toml from the example (optional)
+make nodes-up      # start the two demo GPU nodes in Docker (optional)
+make ui            # start the frontend at http://localhost:5173
+```
+
+To run the local Envio indexer as well, open another terminal:
+
+```bash
+cd indexer
+pnpm install
+pnpm envio dev
+```
+
+The local GraphQL endpoint is `http://localhost:8080/v1/graphql`. To make the UI use it,
+copy `frontend/.env.example` to `frontend/.env.local` and set
+`VITE_INDEXER_URL=http://localhost:8080/v1/graphql`; restart the UI after changing the file.
+If this variable is unset, the rentals list and history use direct Monad RPC instead.
+
+For the oracle demo, fill `oracle/config.toml` with the provider and renter wallet addresses
+you will use, and create a root `.env` with the Monad RPC URL and reporter private keys. Keep
+that `.env` local and never put private keys in `frontend/.env.local`. Then run `make oracle`
+in another terminal. See `make help` for the other available targets, including `make ui-test`,
+`make ui-build`, and `make nodes-down`.
 
 ## How Heartbond uses Envio
 

@@ -1,0 +1,21 @@
+# Demo GPU nodes (D-04). One node per provider so overlapping demo runs stay independent.
+x-node: &node
+  build: .
+  image: gpu-sla-demo-node
+  stop_grace_period: 1s
+
+services:
+  node-a:
+    <<: *node
+    container_name: node-a
+    environment:
+      NODE: node-a
+    ports:
+      - "127.0.0.1:8081:8080"
+  node-b:
+    <<: *node
+    container_name: node-b
+    environment:
+      NODE: node-b
+    ports:
+      - "127.0.0.1:8082:8080"

@@ -1,0 +1,12 @@
+# Copy to oracle/config.toml and replace the placeholder addresses.
+#
+# provider address -> base URL of that provider's node (SPEC H-2). The oracle probes
+# GET <url>/health. Addresses are matched case-insensitively. A rental whose provider
+# is not listed here is not probed and not reported.
+#
+# The URLs below are the demo nodes from docker/docker-compose.yml. Give each provider
+# its own node, so stopping node-b does not fail the other rental.
+
+[nodes]
+"0x00000000000000000000000000000000000000A1" = "http://127.0.0.1:8081"  # node-a
+"0x00000000000000000000000000000000000000B2" = "http://127.0.0.1:8082"  # node-b

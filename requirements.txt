@@ -3,5 +3,6 @@ titanoboa
 pytest
 web3
 httpx
-fastapi
+fastapi==0.143.0  # pinned: its strict JSON content-type check blocks preflight-less cross-site POSTs to the control API
 uvicorn
+eth-tester[py-evm]==0.14.0b1  # oracle tests: local in-process chain

@@ -1,4 +1,4 @@
-# GPU SLA Escrow — Implementation Spec v1.1
+# GPU SLA Escrow — Implementation Spec v1.2
 
 This is the **build spec**. `docs/PRD.md` is the *why* (research, claims, risks);
 this file is the *what exactly*: every rule has an ID, every ID needs a test.
@@ -27,13 +27,15 @@ smoke test, §8). Chain: **Monad Testnet, chain id 10143**.
 | `CHALLENGE_WINDOW` | 60 s | T-4. Demo value, fixed in bytecode |
 | `MAX_SLOTS` | 256 | C-1.9. Vyper loops must be bounded |
 | `MAX_REPORTERS` | 8 | R-1 |
+| `MAX_START_DELAY` | 2 592 000 s (30 days) | C-1.11. Internal constant, not in the ABI |
+| `MAX_INTERVAL` | 86 400 s (1 day) | C-1.12. Internal constant, not in the ABI |
 | Status | 0 None, 1 Active, 2 Proposed, 3 Settled | plain `uint8` |
 | Slot | 0 Empty, 1 Up, 2 Down | Empty counts as Down at settle |
 
 ## 3. Rules
 
 ### C — `create_rental(provider, threshold, interval, start, end, spec_ref)` payable
-Reverts unless **all** hold:
+Reverts unless **all** hold. Checks run in this order: C-1.1..C-1.9, then C-1.11, C-1.12 (when two rules fail, the earlier one's string is returned; C-1.9 needs the division, so it comes after C-1.2..C-1.4):
 - C-1.1 `start >= block.timestamp`
 - C-1.2 `end > start`
 - C-1.3 `interval > 0`
@@ -43,6 +45,8 @@ Reverts unless **all** hold:
 - C-1.7 `provider != msg.sender` (renter ≠ provider)
 - C-1.8 `msg.value > 0`; `price := msg.value` (the PRD's `msg.value == price` collapses into this — price *is* the value sent)
 - C-1.9 `n_slots = (end - start) / interval <= MAX_SLOTS` *(new vs PRD)*
+- C-1.11 `start <= block.timestamp + MAX_START_DELAY` *(D-12)*
+- C-1.12 `interval <= MAX_INTERVAL` *(D-12)*. With C-1.9 this gives `end <= block.timestamp + 30 days + 256 days`, so `end + REPORT_GRACE` cannot overflow.
 - C-1.10 On success: id = `next_rental_id`, then increment; status = Active; emit `RentalCreated`; return id. Contract balance grows by exactly `msg.value`.
 
 ### O — `report_uptime(rental_id, slot, up)`
@@ -81,7 +85,7 @@ Backfill of any completed Empty slot is allowed until `end + REPORT_GRACE`.
 - P-3 `send`/`raw_call` the amount to `msg.sender`; revert if transfer fails (only that caller's own withdraw fails — nobody else's funds are blocked); emit `Withdrawn`
 
 ### R — Reporters *(new vs PRD, reviewer #1)*
-- R-1 Constructor takes 1..8 reporter addresses; fixed forever (no admin, no rotation).
+- R-1 Constructor takes 1..8 reporter addresses; fixed forever (no admin, no rotation). An empty list reverts `no reporters`; a zero address in the list reverts `zero reporter`; more than 8 fails ABI decoding (no string).
 - R-2 The oracle service sends each rental's reports from a key chosen deterministically (`key = keys[rental_id % len(keys)]`), so reports for different rentals use independent nonces and can land in the same block.
 - R-3 `report_uptime` writes only per-rental storage (`rentals[id]`, `_slots[id]`). No global counter is ever written on the report path — keeps reports for different rentals free of storage conflicts.
 - **Honesty line (must appear in pitch):** all reporter keys are team-held. This removes the single-*nonce* bottleneck, **not** the single *trust root*.
@@ -104,7 +108,9 @@ Backfill of any completed Empty slot is allowed until `end + REPORT_GRACE`.
 | C-1.9 | `too many slots` | X-2 | `window closed` |
 | P-1 | `nothing to withdraw` | X-3 | `not a party` |
 | P-3 | `transfer failed` | X-4 | `already objected` |
-| | | F-2 | `window open` |
+| C-1.11 | `start too far` | F-2 | `window open` |
+| C-1.12 | `interval too long` | R-1 (constructor) | `no reporters` |
+| | | R-1 (constructor) | `zero reporter` |
 
 ### T — Timing summary
 - T-1 slot k = `[start + k·interval, start + (k+1)·interval)`
@@ -157,4 +163,7 @@ withdraw by a contract that rejects MON fails only for itself, reports for 2 ren
 | H-* | Oracle probes a real Docker health endpoint; force-down kept as backup | Reviewer demo suggestion |
 | §7 | Monad numbers re-checked against live docs | Reviewer #2 |
 | H-3 | Zero-probe slot is Down (D-04 clarification, 2026-10-13) | Review 2026-10-13: "every probe succeeded" was vacuously true with no probes |
+| C-1.11, C-1.12 | `start` at most 30 days ahead, `interval` at most 1 day (D-12, 2026-10-13) | Security review 2026-10-13: unbounded `end` overflowed `end + REPORT_GRACE` and locked the renter's escrow |
+| C | Check order stated: C-1.1..C-1.9, C-1.11, C-1.12 (2026-10-13, spec v1.2) | Tests assert exact strings; double violations need a defined winner |
+| E | Constructor strings `no reporters`, `zero reporter` added to the table (2026-10-13) | They existed in the contract but not in the spec |
 | — | Provider consent still not on-chain; stated proactively in demo narration | Reviewer #5 (Could-Have: non-gating `provider_ack` event) |

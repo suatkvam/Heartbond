@@ -17,6 +17,7 @@ If a request contradicts SPEC, say so and propose a SPEC change first (log it in
 | `contracts/` | Sora | contract-engineer |
 | `tests/` | Sora | test-engineer |
 | `oracle/`, `docker/` | Sora | oracle-engineer |
+| `scripts/` | Sora | contract-engineer (deploy script), oracle-engineer (scripted demo fallback) — agents write, only Sora runs them against testnet |
 | `shared/abi/`, `shared/deployments/`, `docs/UI_HANDOFF.md`, `docs/INTERFACE_CHANGELOG.md` | Sora → teammate | interface-sync only |
 | `docs/pitch/`, `README.md` | Sora | pitch-factchecker |
 | `frontend/` | **teammate** | **never** — read only |
@@ -60,7 +61,9 @@ security-reviewer → interface-sync. Never deploy with failing tests.
 - Public interface (names, argument order, events, `phase` values) is frozen; changing it
   requires interface-sync to regenerate the ABI and append to `docs/INTERFACE_CHANGELOG.md`.
 - Monad gotchas: gas is charged on the **gas limit** → always set explicit tight limits;
-  keep every EOA above the 10 MON reserve balance; public RPC is rate-limited.
+  the 10 MON reserve balance applies to **value spends** only (PRD §13): the renter's payable
+  `create_rental` must leave ≥ 10 MON (or be an "emptying" transaction); zero-value
+  transactions (reports, `settle`, `finalize`, `withdraw`) only need gas; public RPC is rate-limited.
 - Claims: "permissionless" = anyone can trigger; data comes from team-held reporters.
   Never say trustless oracle, dispute resolution, or "no one else does this".
 - Secrets: private keys only in `.env` (git-ignored). Testnet keys only.

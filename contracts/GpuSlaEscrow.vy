@@ -1,19 +1,22 @@
 # pragma version ~=0.4.3
 """
-@title  GpuSlaEscrow — INTERFACE SKELETON (v1.1)
+@title  GpuSlaEscrow (v1.2)
 @notice Escrow that pays a GPU provider or refunds a renter based on per-slot
         uptime reports from allow-listed reporter keys. Settlement is
         permissionless to trigger; finality is a fixed timeout.
-@dev    This file freezes the PUBLIC INTERFACE (functions, events, storage,
-        constants) so the frontend can be built against the ABI today.
-        Bodies marked `TODO(<spec id>)` are yours to write — the spec id points
-        at docs/SPEC.md. Do not rename/reorder public items without running the
+@dev    Implements docs/SPEC.md v1.2; the rule id next to each check points at
+        that file. Uptime data comes from team-held reporter keys, and an
+        objection is an event log only: it never changes the payout.
+        The PUBLIC INTERFACE (functions, events, storage, constants) is frozen:
+        do not rename/reorder public items without running the
         `interface-sync` agent (it regenerates shared/abi + docs/UI_HANDOFF.md).
 """
 
 # ---------------------------------------------------------------- constants
 MAX_SLOTS: constant(uint256) = 256          # SPEC C-1.9 (Vyper needs bounded loops)
 MAX_REPORTERS: constant(uint256) = 8        # SPEC R-1
+MAX_START_DELAY: constant(uint256) = 2592000  # seconds (30 days), SPEC C-1.11
+MAX_INTERVAL: constant(uint256) = 86400     # seconds (1 day), SPEC C-1.12
 
 REPORT_GRACE: public(constant(uint256)) = 30       # seconds, SPEC T-2 (demo value)
 CHALLENGE_WINDOW: public(constant(uint256)) = 60   # seconds, SPEC T-4 (demo value)
@@ -142,44 +145,153 @@ def create_rental(
     @notice Renter creates an agreement and escrows `msg.value` as the price.
     @return New rental id (>= 1).
     """
-    # TODO(C-1.1 .. C-1.10): validate every rule, store Rental, emit RentalCreated
-    raise "TODO C-1"
+    assert start >= block.timestamp, "start in past"            # C-1.1
+    assert end > start, "end before start"                      # C-1.2 (before any end - start)
+    assert interval > 0, "zero interval"                        # C-1.3 (before any % interval)
+    assert (end - start) % interval == 0, "not multiple"        # C-1.4
+    assert threshold >= 1 and threshold <= 100, "bad threshold"  # C-1.5
+    assert provider != empty(address), "zero provider"          # C-1.6
+    assert provider != msg.sender, "renter is provider"         # C-1.7
+    assert msg.value > 0, "no value"                            # C-1.8
+    n_slots: uint256 = (end - start) // interval
+    assert n_slots <= MAX_SLOTS, "too many slots"               # C-1.9
+    assert start <= block.timestamp + MAX_START_DELAY, "start too far"  # C-1.11
+    assert interval <= MAX_INTERVAL, "interval too long"        # C-1.12
+
+    # C-1.10
+    rental_id: uint256 = self.next_rental_id
+    self.next_rental_id = rental_id + 1
+    self.rentals[rental_id] = Rental(
+        renter=msg.sender,
+        provider=provider,
+        price=msg.value,
+        threshold=threshold,
+        interval=interval,
+        start=start,
+        end=end,
+        n_slots=n_slots,
+        up_count=0,
+        reported_count=0,
+        status=STATUS_ACTIVE,
+        proposed_at=0,
+        compliant=False,
+        renter_objected=False,
+        provider_objected=False,
+        spec_ref=spec_ref,
+    )
+    log RentalCreated(
+        rental_id=rental_id,
+        renter=msg.sender,
+        provider=provider,
+        price=msg.value,
+        threshold=threshold,
+        interval=interval,
+        start=start,
+        end=end,
+        n_slots=n_slots,
+        spec_ref=spec_ref,
+    )
+    return rental_id
 
 
 @external
 def report_uptime(rental_id: uint256, slot: uint256, up: bool):
     """@notice Reporter-only. One report per completed slot, until end + REPORT_GRACE."""
-    # TODO(O-1 .. O-6)
-    raise "TODO O"
+    assert self.is_reporter[msg.sender], "not reporter"                       # O-1
+    r: Rental = self.rentals[rental_id]
+    assert r.status == STATUS_ACTIVE, "not active"                            # O-2 (nonexistent id: status 0)
+    assert block.timestamp <= r.end + REPORT_GRACE, "reporting closed"        # O-3
+    assert slot < r.n_slots, "bad slot"                                       # O-4
+    assert block.timestamp >= r.start + (slot + 1) * r.interval, "slot not done"  # O-5
+    assert self._slots[rental_id][slot] == SLOT_EMPTY, "already reported"     # O-6
+
+    # R-3: only rentals[rental_id] and _slots[rental_id] are written below.
+    if up:
+        self._slots[rental_id][slot] = SLOT_UP
+        self.rentals[rental_id].up_count = r.up_count + 1
+    else:
+        self._slots[rental_id][slot] = SLOT_DOWN
+    self.rentals[rental_id].reported_count = r.reported_count + 1
+    log UptimeReported(rental_id=rental_id, slot=slot, up=up, reporter=msg.sender)
 
 
 @external
 def settle(rental_id: uint256):
     """@notice Anyone. Freezes M/N/compliance once now > end + REPORT_GRACE."""
-    # TODO(S-1 .. S-5)
-    raise "TODO S"
+    r: Rental = self.rentals[rental_id]
+    assert r.status == STATUS_ACTIVE, "not active"                    # S-1 (nonexistent id: status 0)
+    assert block.timestamp > r.end + REPORT_GRACE, "too early"        # S-2 (strict)
+    compliant: bool = 100 * r.up_count >= r.threshold * r.n_slots     # S-3 (no division, boundary passes)
+
+    # S-4
+    self.rentals[rental_id].status = STATUS_PROPOSED
+    self.rentals[rental_id].proposed_at = block.timestamp
+    self.rentals[rental_id].compliant = compliant
+
+    # S-5
+    payee: address = r.renter
+    if compliant:
+        payee = r.provider
+    log SettlementProposed(
+        rental_id=rental_id,
+        up_count=r.up_count,
+        n_slots=r.n_slots,
+        compliant=compliant,
+        payee=payee,
+        amount=r.price,
+        proposed_at=block.timestamp,
+        caller=msg.sender,
+    )
 
 
 @external
 def raise_objection(rental_id: uint256):
     """@notice Renter or provider of this rental, once each, inside the window. Event only."""
-    # TODO(X-1 .. X-4)
-    raise "TODO X"
+    r: Rental = self.rentals[rental_id]
+    assert r.status == STATUS_PROPOSED, "not proposed"                              # X-1
+    assert block.timestamp < r.proposed_at + CHALLENGE_WINDOW, "window closed"      # X-2
+    is_renter: bool = msg.sender == r.renter
+    assert is_renter or msg.sender == r.provider, "not a party"                     # X-3
+
+    # X-4: only the caller's own flag is written; payee and amount stay frozen.
+    if is_renter:
+        assert not r.renter_objected, "already objected"
+        self.rentals[rental_id].renter_objected = True
+    else:
+        assert not r.provider_objected, "already objected"
+        self.rentals[rental_id].provider_objected = True
+    log ObjectionRaised(rental_id=rental_id, by=msg.sender, is_renter=is_renter)
 
 
 @external
 def finalize(rental_id: uint256):
     """@notice Anyone. After the window: credits the frozen payee (pull-payment)."""
-    # TODO(F-1 .. F-4)
-    raise "TODO F"
+    r: Rental = self.rentals[rental_id]
+    assert r.status == STATUS_PROPOSED, "not proposed"                             # F-1
+    assert block.timestamp >= r.proposed_at + CHALLENGE_WINDOW, "window open"      # F-2
+
+    self.rentals[rental_id].status = STATUS_SETTLED                                # F-3 (before crediting)
+
+    # F-4: credit only, no external call. Objection flags are not read here.
+    payee: address = r.renter
+    if r.compliant:
+        payee = r.provider
+    self.credits[payee] += r.price
+    log SettlementFinalized(rental_id=rental_id, payee=payee, amount=r.price, caller=msg.sender)
 
 
 @external
 @nonreentrant
 def withdraw():
     """@notice Sends msg.sender's whole credit balance. Zero balance reverts."""
-    # TODO(P-1 .. P-3)
-    raise "TODO P"
+    amount: uint256 = self.credits[msg.sender]
+    assert amount > 0, "nothing to withdraw"        # P-1
+    self.credits[msg.sender] = 0                    # P-2 (zeroed before the transfer)
+
+    # P-3: raw_call instead of send so a failed transfer reverts with the SPEC string.
+    success: bool = raw_call(msg.sender, b"", value=amount, revert_on_failure=False)
+    assert success, "transfer failed"
+    log Withdrawn(account=msg.sender, amount=amount)
 
 
 # -------------------------------------------------------------- UI helpers

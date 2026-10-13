@@ -41,8 +41,10 @@ UI'da bunu gizlememiz gerekmiyor; "Reporter: team-held" gibi küçük bir etiket
 | `shared/abi/GpuSlaEscrow.json` (ABI) | Sora üretir, sen okursun |
 | `shared/deployments/monad-testnet.json` (adres, deploy bloğu) | Sora deploy ettikçe günceller |
 
-Kontrat henüz deploy edilmedi. O zamana kadar §9'daki mock veriyle çalış. ABI şimdiden
-dondu (fonksiyon isimleri ve sıraları değişmeyecek, değişirse CHANGELOG'a BREAKING diye yazılır).
+Kontrat henüz deploy edilmedi (`shared/deployments/monad-testnet.json` içinde `address: null`).
+O zamana kadar §9'daki mock veriyle çalış. Kontratın tüm fonksiyon gövdeleri artık yazıldı ve
+yerelde test edildi; ABI aynı kaldı ve dondu (fonksiyon isimleri ve sıraları değişmeyecek,
+değişirse CHANGELOG'a BREAKING diye yazılır).
 
 ## 3. Zincir ayarı
 
@@ -78,13 +80,24 @@ import dep from '../shared/deployments/monad-testnet.json' // { address, deployB
 | `raise_objection` | sadece o kiralamanın kiracısı/sağlayıcısı, birer kez | `rental_id` | — | 5 Challenge |
 | `finalize` | **herkes** | `rental_id` | — | 6 Finalizable |
 | `withdraw` | bakiyesi olan herkes | — | — | `credits(account) > 0` |
-| `report_uptime` | sadece oracle | — | — | **UI'da yok** |
+| `report_uptime` | sadece oracle | `rental_id: uint256, slot: uint256, up: bool` | — | **UI'da yok** |
 
 **Form → argüman dönüşümü (create_rental):**
 - `start` = **zincirdeki son bloğun timestamp'i + 15** (`getBlock()`), `Date.now()` değil
   (bilgisayar saati kayabilir; kontrat geçmiş start'ı reddeder).
 - Kullanıcıya "slot süresi (sn)" ve "slot sayısı" sor → `end = start + interval * slotCount`.
   Böylece "süre interval'in katı olmalı" kuralı otomatik sağlanır. Slot sayısı ≤ 256.
+- **Slot süresi (`interval`) en fazla 86 400 sn (1 gün).** Daha büyüğünü kontrat
+  `interval too long` ile reddeder.
+- **`start`, son blok timestamp'inden en fazla 30 gün (2 592 000 sn) ileride olabilir.** Daha
+  ilerisini kontrat `start too far` ile reddeder. Form bugün `start = son blok timestamp'i + 15`
+  kullandığı için bu sınıra takılmaz; sadece ileride "planlı başlangıç" seçeneği eklenirse önemli.
+- Bu iki sınır kontratta internal sabit, **ABI'de yok, zincirden okunamaz** — sayıları UI'da sabit
+  olarak yaz ve tx göndermeden önce formda kontrol et (slot sayısı ≤ 256 kontrolüyle birlikte).
+  Sonuç: bir kiralama oluşturulduktan en geç 286 gün sonra biter (30 gün + 256 × 1 gün).
+- Kontrat kontrolleri şu sırayla yapar, ilk tutmayan revert eder: `start in past`,
+  `end before start`, `zero interval`, `not multiple`, `bad threshold`, `zero provider`,
+  `renter is provider`, `no value`, `too many slots`, `start too far`, `interval too long`.
 - `threshold`: 1–100 tam sayı. Demo varsayılanları: interval 30, slot 4, threshold 75, ücret 0.01 MON.
 - `spec_ref`: GPU tanımı ("RTX 4090 24GB" gibi) → `stringToHex(text, { size: 32 })`. Mantıkta kullanılmıyor, sadece gösterim.
 - Dönen `rental_id`'yi `RentalCreated` event'inden ya da `next_rental_id() - 1`'den al.
@@ -98,10 +111,12 @@ açık bir `gas` ver; cüzdanın kafasına göre büyük limit koymasın.
 |---|---|
 | `start in past` | Başlangıç zamanı geçti, tekrar dene |
 | `end before start` / `zero interval` / `not multiple` / `too many slots` | Süre ayarları geçersiz |
+| `start too far` | Başlangıç en fazla 30 gün sonrası olabilir |
+| `interval too long` | Slot süresi en fazla 86 400 sn (1 gün) olabilir |
 | `bad threshold` | Eşik 1–100 arası olmalı |
 | `zero provider` / `renter is provider` | Sağlayıcı adresi geçersiz |
 | `no value` | Ücret 0 olamaz |
-| `not active` | Bu kiralama zaten settle edilmiş |
+| `not active` | Bu kiralama zaten settle edilmiş (ya da böyle bir id yok) |
 | `too early` | Raporlama süresi henüz bitmedi |
 | `not proposed` | Önce settle gerekiyor / zaten finalize edildi |
 | `window closed` | İtiraz süresi doldu |
@@ -109,6 +124,11 @@ açık bir `gas` ver; cüzdanın kafasına göre büyük limit koymasın.
 | `already objected` | Zaten itiraz ettin |
 | `window open` | İtiraz penceresi henüz kapanmadı |
 | `nothing to withdraw` | Çekilecek bakiye yok |
+| `transfer failed` | Ödeme alıcı adrese gönderilemedi (`withdraw`; alıcı MON kabul etmeyen bir kontrat adresi). Bakiye duruyor |
+
+UI'ın karşılaşmayacağı mesajlar (sadece bilgi): `report_uptime` → `not reporter`, `not active`,
+`reporting closed`, `bad slot`, `slot not done`, `already reported` (sadece oracle);
+constructor → `no reporters`, `zero reporter` (sadece deploy).
 
 ## 5. Okuma fonksiyonları (view, gas yok)
 
@@ -124,6 +144,10 @@ açık bir `gas` ver; cüzdanın kafasına göre büyük limit koymasın.
 | `is_reporter(address)` | `bool` | Oracle panelinde gösterim |
 
 `status`: 0 None · 1 Active · 2 Proposed · 3 Settled
+
+**Dikkat — `payout_preview`:** ABI'de dönüş değerleri isimsiz; viem bunu `[compliant, payee, amount]`
+dizisi olarak verir (index ile oku). Var olmayan bir id için revert etmez, `(true, 0x0, 0)` döner;
+bu yüzden önce `phase(id) != 0` kontrolü yap, 0 ise önizlemeyi gösterme.
 
 **`phase(id)` değerleri — UI'ın ana anahtarı:**
 
@@ -173,7 +197,58 @@ da çalışmalı** — doğruluk kaynağı zincir. Bu API sadece demo panelini z
 | POST | `/rentals/{id}/force-down` | `{ "slots": [2, 3] }` | `{ ok: true }` — yedek kontrol |
 | DELETE | `/rentals/{id}/force-down` | — | `{ ok: true }` |
 
-`at` ISO-8601, `txHash` henüz gönderilmediyse `null`. CORS localhost için açık.
+**Erişim:**
+- Port varsayılan **8787**; Sora `ORACLE_API_PORT` ile değiştirebilir. Servis sadece `127.0.0.1`
+  üzerinde dinler, kimlik doğrulama yok — yalnızca oracle'ın çalıştığı makineden erişilir.
+- API sadece isteğin `Host` header'ı `127.0.0.1` ya da `localhost` ise cevap verir (port fark
+  etmez); başka her `Host` için **HTTP 400** döner (`[::1]` dahil). Tarayıcıdan doğrudan
+  `http://localhost:8787` çağırmak çalışır. Dev proxy kullanıyorsan `Host` header'ı
+  `localhost` / `127.0.0.1` olarak gitmeli (proxy kendi alan adını `Host` olarak geçirirse 400 alırsın).
+- CORS sadece `http://localhost:*` ve `http://127.0.0.1:*` origin'lerine izin verir
+  (`https://` origin'ler ve başka alan adları izinli değil).
+
+**Alanların anlamı:**
+- `reported`: o slot için rapor tx'i **gönderildiği andan** itibaren (ya da slot zincirde dolu
+  bulunduysa) `true`. Tx onaylanmayı beklerken de `true`'dur. Tx başarısız olursa yeniden
+  gönderilene kadar geçici olarak `false`'a dönebilir.
+- `up`: `reported` olduktan sonra gönderilen / zincirdeki karar; ondan önce "şimdi gönderilse"
+  kararı. Bu yüzden hiç probe yapılmamış **gelecekteki bir slot `up: false` görünür**. Slotu
+  renklendirmeden önce `reported` ve `probesTotal`'a bak (`reported: false` → gri/bekliyor).
+  Kesin renk için kaynak her zaman zincir: `get_slots(id)`.
+- `txHash`: son gönderilen rapor tx'i. Gönderilmediyse `null`; **`reported: true` iken de `null`
+  olabilir** (slot oracle yeniden başladıktan sonra zincirde dolu bulunduysa). Link koymadan önce null kontrolü yap.
+- `forcedDown`: slot force-down olarak işaretli. Zincire ne gittiğini göstermez (aşağıya bak).
+- `lastProbe`: o node hiç probe edilmediyse `null`. `lastProbe.at` ISO-8601 ve **zincir zamanı**
+  (son blok timestamp'i), tarayıcı saati değil. `latencyMs` ms cinsinden ondalıklı sayı.
+- `balanceMon`: MON cinsinden ondalıklı sayı (float, wei değil), ~30 sn önbellekli; RPC okuması
+  başarısız olduysa `null`. `/health.ok`: son RPC bakiye okuması başarılı oldu demek
+  (oracle'ın genel sağlığı değil). `/health`'i 30 sn'den sık sorgulamak yeni veri getirmez.
+- `/rentals` sadece oracle'ın izlediği kiralamaları döner: sağlayıcısı oracle config'inde
+  olmayan kiralamalar **listede görünmez** ve `/rentals/{id}` onlar için 404 verir. Kiralama
+  listesini zincirden kur (`next_rental_id`), bu API'den değil.
+
+**İzlenmeyen kiralamalar:**
+- Oracle sadece **sağlayıcısının node'u kendi config'inde tanımlı** olan kiralamaları raporlar.
+  Diğerleri için hiç rapor gönderilmez: `/rentals` içinde görünmezler, zincirde slotları boş (0)
+  kalır ve settle edildiklerinde sonuç **kiracıya iade** olur (boş slot UP sayılmaz).
+- UI: kontrol API'sine ulaşılabiliyorken (`/health` cevap veriyor) bir kiralama `/rentals`
+  içinde yoksa detay ekranında "Bu kiralama oracle tarafından izlenmiyor — slotlar boş kalacak,
+  sonuç kiracıya iade olacak" gibi bir bilgi göster. API'ye ulaşılamıyorsa bu bilgiyi gösterme
+  (izlenip izlenmediği bilinemez).
+- **Henüz yok, karar verildi (D-11):** oracle'a bir kiracı izin listesi (allow-list) ve kiralama
+  başına rapor bütçesi eklenecek. Şu an ikisi de **uygulanmadı**; bugün tek ölçüt sağlayıcının
+  node'u. Eklendiklerinde listede olmayan cüzdanların açtığı kiralamalar da izlenmeyecek ve aynı
+  bilgi onlar için de geçerli olacak. Değişince CHANGELOG'a yazılır.
+
+**`POST /rentals/{id}/force-down`:**
+- Gövde JSON olmalı ve `content-type: application/json` ile gitmeli. `slots`: tam sayılar
+  (`"2"`, `2.0`, `true` kabul edilmez), her biri `0 <= slot < n_slots`, en fazla 256 eleman.
+- Bilinmeyen (izlenmeyen) id → **404**. Geçersiz gövde, aralık dışı slot, yanlış content-type,
+  sayı olmayan id → **422**. Yanlış `Host` → 400.
+- Zaten `reported: true` olan bir slot için de `{ ok: true }` döner ve `forcedDown: true`
+  görünür, ama zincire giden karar **değişmez**. Butonu sadece `reported: false` slotlar için aktif et.
+- `DELETE /rentals/{id}/force-down` o kiralamadaki tüm işaretleri kaldırır (bilinmeyen id → 404).
+
 Panel fikri: node durumu (yeşil/kırmızı nokta, son probe), slot başına "5/6 probe OK",
 tx hash linki. Force-down butonu sadece "demo modu" açıkken görünsün.
 

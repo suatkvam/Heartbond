@@ -131,3 +131,93 @@ decisions taken in response to the external review of 2026-10-01
   own arbitration or why users would switch; an invented go-to-market story would be less
   credible than an honest open question. Source: PLAN §1 #6.
 - **Affects:** PRD §17, §21, §24.
+
+## D-09 — Main track: Trust, Identity & AI Infrastructure
+
+- **Date:** 2026-10-13
+- **Status:** Accepted
+- **Decision:** The project enters Monad Metropolis under the main track **Trust, Identity &
+  AI Infrastructure**. The observation that only the renter's money is escrowed and the
+  provider posts no bond that could be slashed stays in the PRD as a Post-Hackathon item.
+- **Why:** Owner's decision; the owner gave no further reason. Context from the former PRD
+  §23 item (not the owner's words): only one main track can be chosen and it sets the
+  judging category (`docs/source/metropolis-notlari/01-metropolis-nedir.md`); the external
+  review judged the project a fit for this track (`docs/REVIEW_2026-10-01.txt`); Monad's
+  resources page lists "SLA Insurance & Performance Bonds — underwriting compute delivery
+  with onchain slashing" under **Onchain Finance & Trading**
+  (`docs/source/metropolis-notlari/ek/resources-sayfasi.md`), and under that lens the
+  missing provider bond is the visible gap. The track list is a September 2026 snapshot
+  (`docs/source/metropolis-notlari/02-trackler-ve-bountyler.md`).
+- **Affects:** PRD §1, §23, §25.
+
+## D-10 — Chainlink CRE is not used in the hackathon; demo and simulation run on the Docker health-probe node
+
+- **Date:** 2026-10-13
+- **Status:** Accepted
+- **Decision:** Chainlink CRE is not used in the hackathon, neither as the reporter layer
+  nor as a simulation demo. The demo and all simulation of it run with the Docker
+  health-probe nodes (D-04) on the team's WSL machine, reported from the team-held keys
+  (D-02). CRE stays in the PRD only as a Post-Hackathon option; the team does not enter
+  the "Best workflow with CRE" bounty.
+- **Why:** Owner's decision; the owner gave no further reason. Context from the former PRD
+  §23 items (not the owner's words): the options were (a) keep team keys, (b) CRE in
+  simulation beside the team keys, (c) CRE deployed as the reporter. Option (b) would not
+  pass the Metropolis "deletion test" for sponsor integrations; option (c) needs
+  Chainlink's deploy approval, is unconfirmed on Monad Testnet, and changes the frozen
+  contract interface (a forwarder entry point instead of `report_uptime`). This decision
+  takes option (a) and rejects (b) and (c) for the hackathon.
+- **Affects:** PRD §4, §7, §8, §12, §13, §14, §20, §21, §23, §25.
+
+## D-11 — Rental creation stays open; the oracle serves allow-listed renters with a per-rental report budget
+
+- **Date:** 2026-10-13
+- **Status:** Accepted
+- **Decision:** Rental creation in the contract stays open to anyone and is not changed.
+  The oracle service reports only rentals whose renter is on an allow-list in its
+  configuration, and sends at most a configured number of report transactions per rental.
+  Rentals outside the list are not reported, and a rental gets no further reports once its
+  budget is spent; unreported slots count as "down". The budget also bounds the D-04
+  retries. This is recorded in the PRD as a known limitation. What counts against the
+  budget, and its relation to the slot count, is left open (PRD §23).
+- **Why:** The security reviews of 2026-10-13 (results recorded in `docs/TASKS.md`, T-005
+  and T-013) found that a stranger can create many cheap
+  rentals with many short slots naming a served provider; the service would send up to 256
+  report transactions for each with no cap, draining the team's reporter keys (Monad charges
+  the gas limit) and possibly delaying probes and reports for honest rentals. Owner's
+  decision: keep the contract permissionless and put the limit in the off-chain service.
+  Rejected: restricting who may create rentals on-chain.
+- **Affects:** PRD §8, §10, §12, §15, §20, §21, §23.
+
+## D-12 — Creation bounds: start at most 30 days ahead, interval at most one day
+
+- **Date:** 2026-10-13
+- **Status:** Accepted
+- **Decision:** Agreement creation reverts if `start > block.timestamp + 30 days` or if
+  `interval > 86400` seconds (SPEC C-1.11 and C-1.12, each with its own revert string).
+  Together with the 256-slot cap (D-05) this bounds `end` to at most 286 days after
+  creation.
+- **Why:** The security review of 2026-10-13 (`docs/TASKS.md`, T-005) found that `end` had
+  no upper bound: a value near the top of the integer range passes every creation rule but
+  makes `end + REPORT_GRACE` overflow, so the rental can never be reported or settled and
+  the renter's own escrow is locked for good. Owner's decision: bound `start` and
+  `interval` at creation. Context (not the owner's words): the alternatives were a direct
+  bound on `end`, or leaving the lock as a disclosed limitation. A pre-start cancel stays
+  Future scope.
+- **Affects:** PRD §7, §9.2, §12, §15, §25.
+
+## D-13 — A rental whose provider has no configured node is not reported
+
+- **Date:** 2026-10-13
+- **Status:** Accepted
+- **Decision:** The oracle service does not probe and does not report a rental whose
+  provider address has no node URL in its configuration. Unless a reporter key reports it
+  outside the service, such a rental's slots stay unreported, which the contract counts as
+  "down", so it refunds its renter.
+- **Why:** The PRD did not say what happens to such a rental. The service was built this
+  way on 2026-10-13 (`docs/TASKS.md`, T-009) because sending "down" reports for a provider
+  the team does not serve would only spend reporter gas and gives the same payout as
+  sending nothing. The owner accepted this behaviour. The alternative, sending explicit
+  "down" reports, was not adopted. This is separate from the D-04 clarification, which is
+  about slots of a served rental in which no probe ran: those are still reported "down".
+- **Affects:** PRD §7, §10, §20.
+

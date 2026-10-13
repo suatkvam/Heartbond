@@ -138,12 +138,12 @@ export function useRentalList(limit = 8) {
       for (let i = next - 1n; i >= 1n && ids.length < limit; i--) ids.push(i)
       const rows = await Promise.all(
         ids.map(async (id): Promise<ListRow> => {
-          const [rental, phase, slots] = await Promise.all([
+          const [rental, slots] = await Promise.all([
             read(pc!, 'rentals', [id]) as Promise<Rental>,
-            read(pc!, 'phase', [id]) as Promise<number>,
             read(pc!, 'get_slots', [id]) as Promise<readonly number[]>,
           ])
-          return { id, rental: { ...rental, status: Number(rental.status) }, phase: Number(phase), slots: slots.map(Number) }
+          const normalized = { ...rental, status: Number(rental.status) }
+          return { id, rental: normalized, phase: computePhase(normalized, now), slots: slots.map(Number) }
         }),
       )
       return { total: Number(next - 1n), rows }

@@ -49,8 +49,48 @@ function Wallet() {
   )
 }
 
+const LIVE_NOTICE_KEY = 'heartbond-live-demo-notice-dismissed'
+
+function wasLiveNoticeDismissed() {
+  try { return localStorage.getItem(LIVE_NOTICE_KEY) === 'true' }
+  catch { return false }
+}
+
+function LiveDemoNotice({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  return (
+    <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+      <section className="live-modal" role="dialog" aria-modal="true" aria-labelledby="live-notice-title" aria-describedby="live-notice-copy">
+        <div className="live-modal-head">
+          <span className="live-modal-mark" aria-hidden="true">!</span>
+          <button className="modal-close" type="button" aria-label="Close live demo notice" onClick={onClose}>×</button>
+        </div>
+        <p className="eyebrow">Live demo · Monad Testnet</p>
+        <h2 id="live-notice-title">Before you create a rental</h2>
+        <div id="live-notice-copy" className="live-modal-copy">
+          <p>This demo uses testnet MON only; it has no real value.</p>
+          <p>Uptime reports come from the team-run oracle. It monitors only renter wallets on the allow-list and providers with a configured node.</p>
+          <p>Ask the team for an authorized renter wallet and provider before testing. Rentals outside those settings receive no reports; unreported slots count as DOWN and settlement refunds the renter.</p>
+          <p>Settle and finalize are permissionless. An objection is recorded but does not change the payout.</p>
+        </div>
+        <div className="live-modal-actions">
+          <button className="primary" type="button" onClick={onClose}>I understand</button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 export function App() {
   const hash = useHash()
+  const [showLiveNotice, setShowLiveNotice] = useState(() => !wasLiveNoticeDismissed())
   const [, route, param] = hash.split('/')
   let screen = <ListScreen />
   if (route === 'create') screen = <CreateScreen />
@@ -59,6 +99,10 @@ export function App() {
 
   // browser tab: page title · product name
   const page = route === 'create' ? 'Create rental' : route === 'withdraw' ? 'Withdraw' : route === 'rental' && param ? `Rental #${param}` : 'Rentals'
+  function dismissLiveNotice() {
+    try { localStorage.setItem(LIVE_NOTICE_KEY, 'true') } catch { /* storage may be disabled */ }
+    setShowLiveNotice(false)
+  }
   useEffect(() => {
     document.title = `${page} · Heartbond`
   }, [page])
@@ -97,7 +141,9 @@ export function App() {
             Contract: <a href={addrUrl(ADDRESS)} target="_blank" rel="noreferrer" className="mono">{ADDRESS}</a>
           </p>
         )}
+        <p><button className="link live-note-trigger" type="button" onClick={() => setShowLiveNotice(true)}>Show live demo notice</button></p>
       </footer>
+      {showLiveNotice && <LiveDemoNotice onClose={dismissLiveNotice} />}
     </div>
   )
 }

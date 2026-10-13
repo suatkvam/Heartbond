@@ -54,6 +54,18 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; color: var(--fain
 .bignum { font-size: 44px; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; }
 .notice { border: 1px solid var(--line-strong); border-left: 3px solid var(--accent); background: var(--raise); border-radius: 8px; padding: 12px 16px; margin: 16px 0; color: var(--text); font-size: 14px; }
 .notice ul { margin: 8px 0 0; padding-left: 20px; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 24px; background: rgba(4, 4, 8, 0.76); backdrop-filter: blur(8px); }
+.live-modal { width: min(100%, 560px); max-height: min(90vh, 760px); overflow: auto; padding: 28px; border: 1px solid var(--line-strong); border-radius: 16px; background: var(--surface); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55); }
+.live-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.live-modal-mark { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent); border-radius: 50%; background: color-mix(in srgb, var(--accent) 14%, transparent); color: #b4a9ff; font-weight: 700; }
+.modal-close { width: 36px; height: 36px; padding: 0; color: var(--muted); font-size: 24px !important; line-height: 1; }
+.eyebrow { margin: 0 0 6px; color: #b4a9ff; font: 12px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.live-modal h2 { margin-bottom: 16px; font-size: 24px; }
+.live-modal-copy { color: var(--muted); }
+.live-modal-copy p { margin: 12px 0; }
+.live-modal-copy p:last-child { padding-top: 12px; border-top: 1px solid var(--line); color: var(--faint); font-size: 14px; }
+.live-modal-actions { display: flex; justify-content: flex-end; margin-top: 24px; }
+.live-note-trigger { color: var(--muted) !important; font-size: 13px !important; }
 .emptystate { display: grid; gap: 16px; justify-items: center; text-align: center; padding: 56px 24px; color: var(--muted); }
 
 .tag, .pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 2px 8px; font-size: 14px; color: var(--muted); white-space: nowrap; }
@@ -171,6 +183,7 @@ td a { text-decoration: none; }
 @keyframes fade { 50% { opacity: 0.45; } }
 
 @media (max-width: 760px) { .form { grid-template-columns: 1fr; } .bignum { font-size: 32px; } .app { padding: 0 16px 32px; } .slots.hero .slot { height: 80px; } }
+@media (max-width: 560px) { .modal-backdrop { padding: 12px; } .live-modal { padding: 22px; } .live-modal h2 { font-size: 21px; } }
 
 /* Motion only where state changes, and none for people who ask for less. */
 @media (prefers-reduced-motion: reduce) {

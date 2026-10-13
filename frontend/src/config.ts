@@ -3,6 +3,7 @@ import { createConfig, http } from 'wagmi'
 import { injected } from 'wagmi/connectors'
 import abiJson from '../../shared/abi/GpuSlaEscrow.json'
 import deployment from '../../shared/deployments/monad-testnet.json'
+import { parseDemoProviders } from './lib/logic'
 
 const env = import.meta.env
 
@@ -31,6 +32,9 @@ export const wagmiConfig = createConfig({
   connectors: [injected()],
   transports: { [monad.id]: http(RPC_URL) },
 })
+
+/** Optional demo address book for the Create form: "label=0xaddress,label=0xaddress". Public addresses only. */
+export const DEMO_PROVIDERS = parseDemoProviders(env.VITE_DEMO_PROVIDERS)
 
 export const txUrl = (hash: string) => `${EXPLORER}/tx/${hash}`
 export const addrUrl = (a: string) => `${EXPLORER}/address/${a}`

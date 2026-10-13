@@ -83,6 +83,8 @@ export function useRental(id: bigint) {
   return { data: q.data, isLoading: q.isLoading, error: q.error, notFound: q.data?.phase === 0 }
 }
 
+export type ListRow = { id: bigint; rental: Rental; phase: number; slots: number[] }
+
 /** Newest rentals first; capped so the public RPC is not hammered (off-screen rentals are not queried). */
 export function useRentalList(limit = 8) {
   const pc = usePublicClient()
@@ -96,15 +98,19 @@ export function useRentalList(limit = 8) {
       const ids: bigint[] = []
       for (let i = next - 1n; i >= 1n && ids.length < limit; i--) ids.push(i)
       const rows = await Promise.all(
-        ids.map(async (id) => {
-          const [rental, phase] = await Promise.all([read(pc!, 'rentals', [id]) as Promise<Rental>, read(pc!, 'phase', [id]) as Promise<number>])
-          return { id, rental, phase: Number(phase) }
+        ids.map(async (id): Promise<ListRow> => {
+          const [rental, phase, slots] = await Promise.all([
+            read(pc!, 'rentals', [id]) as Promise<Rental>,
+            read(pc!, 'phase', [id]) as Promise<number>,
+            read(pc!, 'get_slots', [id]) as Promise<readonly number[]>,
+          ])
+          return { id, rental: { ...rental, status: Number(rental.status) }, phase: Number(phase), slots: slots.map(Number) }
         }),
       )
       return { total: Number(next - 1n), rows }
     },
   })
-  if (MOCK) return { data: { total: 1, rows: [{ id: 1n, rental: MOCK_RENTAL, phase: computePhase(MOCK_RENTAL, now) }] }, isLoading: false, error: null as Error | null }
+  if (MOCK) return { data: { total: 1, rows: [{ id: 1n, rental: MOCK_RENTAL, phase: computePhase(MOCK_RENTAL, now), slots: MOCK_SLOTS }] as ListRow[] }, isLoading: false, error: null as Error | null }
   return { data: q.data, isLoading: q.isLoading, error: q.error }
 }
 
@@ -115,6 +121,18 @@ export function useCredits(account?: Address) {
     enabled: !MOCK && !!pc && !!account,
     refetchInterval: 4000,
     queryFn: async () => (await read(pc!, 'credits', [account])) as bigint,
+  })
+}
+
+/** credits() of several accounts at once (who still has something to withdraw). */
+export function useCreditsOf(accounts: Address[]) {
+  const pc = usePublicClient()
+  const key = accounts.map((a) => a.toLowerCase()).sort().join(',')
+  return useQuery({
+    queryKey: ['credits-of', key],
+    enabled: !MOCK && !!pc && accounts.length > 0,
+    refetchInterval: 6000,
+    queryFn: async () => Object.fromEntries(await Promise.all(accounts.map(async (a) => [a.toLowerCase(), (await read(pc!, 'credits', [a])) as bigint] as const))),
   })
 }
 
@@ -141,8 +159,8 @@ export function useTx() {
   const [tx, setTx] = useState<TxState>({ status: 'idle' })
 
   async function send(functionName: string, args: unknown[] = [], value?: bigint): Promise<TransactionReceipt | undefined> {
-    if (MOCK) return void setTx({ status: 'failed', error: 'Mock modu: kontrat deploy edilmedi, işlem gönderilmedi' })
-    if (!wallet || !pc) return void setTx({ status: 'failed', error: 'Önce cüzdan bağla' })
+    if (MOCK) return void setTx({ status: 'failed', error: 'Mock mode: the contract is not deployed, nothing was sent' })
+    if (!wallet || !pc) return void setTx({ status: 'failed', error: 'Connect a wallet first' })
     let hash: Hex | undefined
     try {
       setTx({ status: 'signing' })
@@ -152,7 +170,7 @@ export function useTx() {
       hash = await wallet.writeContract({ ...req, gas, chain: monad })
       setTx({ status: 'pending', hash })
       const receipt = await pc.waitForTransactionReceipt({ hash })
-      if (receipt.status !== 'success') return void setTx({ status: 'failed', hash, error: 'İşlem zincirde revert etti' })
+      if (receipt.status !== 'success') return void setTx({ status: 'failed', hash, error: 'The transaction reverted on-chain' })
       setTx({ status: 'confirmed', hash })
       qc.invalidateQueries()
       return receipt
@@ -164,7 +182,7 @@ export function useTx() {
 }
 
 // ---------------------------------------------------------------- event history
-export type Ev = { name: string; args: Record<string, unknown>; block: bigint; tx: Hex; logIndex: number }
+export type Ev = { name: string; args: Record<string, unknown>; block: bigint; tx: Hex; logIndex: number; time?: number }
 const CHUNK = 1000n // blocks per getLogs call
 const MAX_BACK_CHUNKS = 60 // per run; the "scan older" button continues
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -196,9 +214,13 @@ export function useEvents(id: bigint, parties: Address[]) {
 
     const fetchRange = async (from: bigint, to: bigint): Promise<Ev[]> => {
       const logs = await pc.getLogs({ address: ADDRESS!, fromBlock: from, toBlock: to })
-      return parseEventLogs({ abi: ABI, logs })
+      const found: Ev[] = parseEventLogs({ abi: ABI, logs })
         .map((l) => ({ name: l.eventName as string, args: l.args as unknown as Record<string, unknown>, block: l.blockNumber, tx: l.transactionHash, logIndex: l.logIndex }))
         .filter((e) => e.args.rental_id === id || (e.name === 'Withdrawn' && parties.some((p) => sameAddr(p, e.args.account as string))))
+      // block timestamps for the activity feed: one read per block that holds a relevant event
+      const blocks = [...new Set(found.map((e) => e.block))]
+      const times = new Map(await Promise.all(blocks.map(async (b) => [b, Number((await pc.getBlock({ blockNumber: b })).timestamp)] as const)))
+      return found.map((e) => ({ ...e, time: times.get(e.block) }))
     }
     const merge = (found: Ev[]) =>
       found.length &&

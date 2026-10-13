@@ -14,12 +14,12 @@ rental from UI_HANDOFF §9 and sends no transaction.
 | Screen | Route | Notes |
 |---|---|---|
 | Connect wallet | header | Injected wallet (MetaMask); switches to / adds Monad Testnet |
-| Rentals | `#/` | Newest 8 rentals, read from the chain |
-| Create rental | `#/create` | Every SPEC C-rule checked before sending; reserve-balance warning |
-| Rental detail | `#/rental/<id>` | Slot timeline, uptime vs threshold, phase + countdown, phase-gated buttons, event history, optional oracle panel |
-| Withdraw | `#/withdraw` | `credits(connected address)` and `withdraw()` |
+| Rentals | `#/` | Newest 8 rentals with status, slot mini-tiles and outcome |
+| Create rental | `#/create` | Every SPEC C-rule checked before sending; reserve-balance warning; start by delay or "same time as rental #N"; optional provider quick-picks |
+| Rental detail | `#/rental/<id>` | Phase banner with countdown, slot tiles, uptime bar with threshold marker, outcome card, role badge and "who acts next" line, event history, optional oracle panel |
+| Withdraw | `#/withdraw` | `credits(connected address)`, `withdraw()`, and a hint naming the account that holds the payout |
 
-What the UI says and does not say: uptime data comes from team-run reporter keys (one trust
+UI text is English. What the UI says and does not say: uptime data comes from team-run reporter keys (one trust
 root); `settle` and `finalize` can be triggered by any wallet; an objection is only a record
 (objection log) and never changes the payout.
 
@@ -52,6 +52,7 @@ No private key belongs in the frontend. All variables are optional.
 | `VITE_ESCROW_ADDRESS` | `address` in the shared deployment file | Contract address override |
 | `VITE_DEPLOY_BLOCK` | `deployBlock` in the shared deployment file | Lower bound for the log scan |
 | `VITE_ORACLE_API` | `http://localhost:8787` | Optional oracle control API |
+| `VITE_DEMO_PROVIDERS` | unset | Demo address book for the Create form: `Node A=0x…,Node B=0x…` (public addresses only) |
 
 After a deploy, `scripts/deploy.py` writes the address into the shared deployment file;
 rebuild (or restart `npm run dev`) and the app leaves mock mode.
@@ -76,6 +77,17 @@ rebuild (or restart `npm run dev`) and the app leaves mock mode.
   allow-list and whose provider has a configured node. Add the wallet you create rentals with
   to `[renters] allow` in `oracle/config.toml` before creating one; otherwise the rental gets no
   reports and refunds.
+- **Same start for two rentals** (demo): on the Create form choose "Start at the same time as
+  rental #N". It works while that rental's start is at least 5 s ahead; otherwise the form says why.
+- **Roles**: the provider is only an address and never has to connect. The connected wallet is
+  the renter; if it equals the provider address the form blocks creation.
+- **Design**: near-black flat cards with hairline borders; one accent (Monad purple `#836EF9`) for
+  primary actions and the current slot / step; green, red and grey only for UP / DOWN / EMPTY and
+  the outcome that follows from them. Inter for UI, JetBrains Mono for addresses, hashes, amounts,
+  countdowns and slot numbers — both self-hosted through `@fontsource-variable/*`, so the page needs
+  no font CDN. Animations (slot pulse, tile and feed transitions, skeletons) stop under
+  `prefers-reduced-motion`.
+- **Bundle**: libraries are split into `react`, `viem` and `wallet` chunks; the app chunk is ~40 kB.
 - **Reserve balance**: the create form warns when paying the price would leave the wallet with
   less than 10 MON, because Monad then reverts the transaction.
 
